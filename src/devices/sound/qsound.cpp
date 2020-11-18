@@ -101,6 +101,7 @@
 
 #include <algorithm>
 #include <fstream>
+#include <iostream>
 
 #define LOG_GENERAL     (1U << 0)
 #define LOG_COMMAND     (1U << 1)

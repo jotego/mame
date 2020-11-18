@@ -12,7 +12,7 @@
 
 #include "cpu/dsp16/dsp16.h"
 #include "dirom.h"
-
+#include <fstream>
 
 class qsound_hle_device : public device_t, public device_sound_interface, public device_rom_interface<24>
 {
@@ -36,6 +36,7 @@ protected:
 	virtual void rom_bank_updated() override;
 
 private:
+	std::ofstream flog;
 
 	// DSP ROM sample map
 	enum {

@@ -11,6 +11,8 @@
 
 #pragma once
 
+#define QSOUND_LLE
+
 #include "sound/msm5205.h"
 #include "sound/qsound.h"
 #include "sound/okim6295.h"
@@ -22,6 +24,8 @@
 #include "emupal.h"
 #include "screen.h"
 #include "tilemap.h"
+
+#include <fstream>
 
 // Video raw params
 // measured clocks:
@@ -104,6 +108,7 @@ struct CPS1config
 
 class cps_state : public driver_device
 {
+	std::ofstream fdebug;
 public:
 	cps_state(const machine_config &mconfig, device_type type, const char *tag)
 		: cps_state(mconfig, type, tag, 1)

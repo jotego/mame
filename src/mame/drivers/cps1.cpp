@@ -238,6 +238,7 @@ Stephh's log (2006.09.20) :
   - replaced input read handler with direct AM_READ_PORT where suitable
 
 ***************************************************************************/
+#define QSOUND_LLE
 
 #include "emu.h"
 #include "includes/cps1.h"
@@ -252,6 +253,8 @@ Stephh's log (2006.09.20) :
 #include "sound/qsound.h"
 #include "machine/kabuki.h"
 #include "speaker.h"
+
+#include <iomanip>
 
 
 
@@ -396,26 +399,42 @@ uint16_t cps_state::qsound_rom_r(offs_t offset)
 	}
 }
 
+void fdebug_report( std::ofstream& fdebug, int base, int offset, int data, bool read ) {
+  offset<<=1;
+  fdebug << std::setw(6) << std::setfill('0') << std::hex << (offset+base);
+  if(read)
+    fdebug << " - Read  - ";
+  else
+    fdebug << " - Write - ";
+  fdebug << std::setw(2) << std::hex << (data&0xff) << '\n';
+}
+
 uint16_t cps_state::qsound_sharedram1_r(offs_t offset)
 {
+  fdebug_report( fdebug, 0xf18000, offset, m_qsound_sharedram1[offset], true );
 	return m_qsound_sharedram1[offset] | 0xff00;
 }
 
 void cps_state::qsound_sharedram1_w(offs_t offset, uint16_t data, uint16_t mem_mask)
 {
-	if (ACCESSING_BITS_0_7)
+	if (ACCESSING_BITS_0_7) {
 		m_qsound_sharedram1[offset] = data;
+    fdebug_report( fdebug, 0xf18000, offset, data, false );
+  }
 }
 
 uint16_t cps_state::qsound_sharedram2_r(offs_t offset)
 {
+  fdebug_report( fdebug, 0xf1e000, offset, m_qsound_sharedram2[offset], true );
 	return m_qsound_sharedram2[offset] | 0xff00;
 }
 
 void cps_state::qsound_sharedram2_w(offs_t offset, uint16_t data, uint16_t mem_mask)
 {
-	if (ACCESSING_BITS_0_7)
+	if (ACCESSING_BITS_0_7) {
 		m_qsound_sharedram2[offset] = data;
+    fdebug_report( fdebug, 0xf1e000, offset, data, false );
+  }
 }
 
 void cps_state::qsound_banksw_w(uint8_t data)
@@ -3612,6 +3631,8 @@ void cps_state::qsound(machine_config &config)
 	qsound_device &qsound(QSOUND(config, "qsound"));
 	qsound.add_route(0, "lspeaker", 1.0);
 	qsound.add_route(1, "rspeaker", 1.0);
+
+  fdebug.open("qsnd.log");
 }
 
 void cps_state::wofhfh(machine_config &config)

@@ -18,6 +18,7 @@
 #include "qsoundhle.h"
 
 #include <algorithm>
+#include <iomanip>
 #include <limits>
 
 // device type definition
@@ -47,6 +48,7 @@ qsound_hle_device::qsound_hle_device(const machine_config &mconfig, const char *
 	, m_dsp_rom(*this, "dsp")
 	, m_data_latch(0)
 {
+    flog.open("qsnd_cmd.log");
 }
 
 //-------------------------------------------------
@@ -191,6 +193,7 @@ void qsound_hle_device::qsound_w(offs_t offset, uint8_t data)
 		case 2:
 			m_stream->update();
 			write_data(data, m_data_latch);
+        	flog << std::dec << machine().time().as_ticks(4'000'000) << " " << std::hex << ((unsigned(data) << 16) | m_data_latch) << '\n';
 			break;
 
 		default:
