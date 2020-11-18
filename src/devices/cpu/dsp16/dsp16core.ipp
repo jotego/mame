@@ -20,20 +20,25 @@
 inline u16 &dsp16_device_base::core_state::yaau_postmodify_r(u16 op)
 {
 	u16 &r(op_yaau_r(op));
+	bool loop = yaau_re && (yaau_re == r);
 	switch (op & 0x0003U)
 	{
 	case 0x0: // *rN
+		loop = false;
 		break;
 	case 0x1: // *rN++
-		r = (yaau_re && (yaau_re == r)) ? yaau_rb : (r + 1);
+		r++;
 		break;
 	case 0x2: // *rN--
 		--r;
+		loop = false;
 		break;
 	case 0x3: // *rN++j
 		r += yaau_j;
+		loop = loop && (yaau_j==1);
 		break;
 	}
+	if( loop ) r = yaau_rb;
 	return r &= yaau_mask;
 }
 
@@ -182,7 +187,7 @@ inline s64 &dsp16_device_base::core_state::dau_set_atx(u16 op, s16 value)
 inline s64 &dsp16_device_base::core_state::dau_set_at(u16 op, s16 value)
 {
 	s64 &at(op_dau_at(op));
-	bool const clear(!BIT(dau_psw, 4 + op_d(~op)));
+	bool const clear(false);//!BIT(dau_psw, 4 + op_d(~op)));
 	return at = s32((u32(u16(value)) << 16) | u32(clear ? u16(0) : u16(u64(at))));
 }
 
