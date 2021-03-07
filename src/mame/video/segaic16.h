@@ -55,6 +55,7 @@ protected:
 class segaic16_video_device :   public device_t,
 								public device_video_interface
 {
+	int dump_cnt;
 public:
 	/* tilemap systems */
 	static constexpr unsigned MAX_TILEMAPS       = 1;
@@ -75,7 +76,7 @@ public:
 
 	static constexpr unsigned ROTATE_YBOARD      = 0;
 
-
+	void dump_vram();
 
 	struct tilemap_callback_info
 	{
@@ -123,6 +124,7 @@ public:
 	template <typename T> segaic16_video_device(const machine_config &mconfig, const char *tag, device_t *owner, uint32_t clock, T &&decode_tag)
 		: segaic16_video_device(mconfig, tag, owner, clock)
 	{
+		dump_cnt = 0;
 		m_gfxdecode.set_tag(std::forward<T>(decode_tag));
 	}
 

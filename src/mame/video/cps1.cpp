@@ -2996,24 +2996,36 @@ void cps2_state::find_last_sprite()    /* Find the offset of last sprite */
 	m_cps2_last_sprite_offset = m_cps2_obj_size / 2 - 4;
 }
 
+bool cps2_validxy( int x, int y ) {
+    x-=0x40;
+    y-=0x10;
+    return x>-15 && x<384 && y<224 && y>-15;
+    //x&=0x1ff;
+    //y&=0x1ff;
+    //return x>0x30 && y>0x10 && y<0xF0 && x<0x1c0;
+}
+
 void cps2_state::cps2_render_sprites( screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect, int *primasks )
 {
 #define DRAWSPRITE(CODE,COLOR,FLIPX,FLIPY,SX,SY)                                    \
 {                                                                                   \
-	if (flip_screen())                                                           \
-		m_gfxdecode->gfx(2)->prio_transpen(bitmap,\
-				cliprect,                                            \
-				CODE,                                                               \
-				COLOR,                                                              \
-				!(FLIPX),!(FLIPY),                                                  \
-				512-16-(SX),256-16-(SY), screen.priority(),primasks[priority],15);                 \
-	else                                                                            \
-		m_gfxdecode->gfx(2)->prio_transpen(bitmap,\
-				cliprect,                                            \
-				CODE,                                                               \
-				COLOR,                                                              \
-				FLIPX,FLIPY,                                                        \
-				SX,SY, screen.priority(),primasks[priority],15);                 \
+    if( cps2_validxy(SX,SY) ) { \
+        obj_cnt++; obj_cnt_line[SY&0xff]++; \
+    	if (flip_screen())                                                           \
+    		m_gfxdecode->gfx(2)->prio_transpen(bitmap,\
+    				cliprect,                                            \
+    				CODE,                                                               \
+    				COLOR,                                                              \
+    				!(FLIPX),!(FLIPY),                                                  \
+    				512-16-(SX),256-16-(SY), screen.priority(),primasks[priority],15);                 \
+    	else                                                                            \
+    		m_gfxdecode->gfx(2)->prio_transpen(bitmap,\
+    				cliprect,                                            \
+    				CODE,                                                               \
+    				COLOR,                                                              \
+    				FLIPX,FLIPY,                                                        \
+    				SX,SY, screen.priority(),primasks[priority],15);                 \
+    } \
 }
 
 	int i;
@@ -3028,7 +3040,30 @@ void cps2_state::cps2_render_sprites( screen_device &screen, bitmap_ind16 &bitma
 	}
 #endif
 
-	for (i = m_cps2_last_sprite_offset; i >= 0; i -= 4)
+    int obj_cnt=0;
+    static int obj_max=0, maxline=0, entry_max=0;
+    static bool first=true;
+    static int obj_cnt_line[256];
+    static int obj_cnt_line_max[256];
+    static bool array_init=true;
+    //static bool sorted=true;
+    static int frame_cnt=0;
+    const int obj_limit=900;
+
+    // if( m_cps2_last_sprite_offset>(obj_limit<<2) )
+    //     m_cps2_last_sprite_offset = obj_limit<<2;
+
+    //int last_y=0x1ff;
+
+    for( int k=0; k<256; k++ ) {
+        if( array_init ) {
+            obj_cnt_line_max[k] = 0;
+            array_init = false;
+        }
+        obj_cnt_line[k] = 0;
+    }
+
+	for (i = m_cps2_last_sprite_offset; i >= 0 && obj_cnt<obj_limit; i -= 4)
 	{
 		int x = base[i + 0];
 		int y = base[i + 1];
@@ -3036,6 +3071,15 @@ void cps2_state::cps2_render_sprites( screen_device &screen, bitmap_ind16 &bitma
 		int code = base[i + 2] + ((y & 0x6000) << 3);
 		int colour = base[i + 3];
 		int col = colour & 0x1f;
+
+        if(code==0) continue;
+        // check table order
+        /*int cur_y = y&0x1ff;
+        if( cur_y > last_y && !first ) {
+            logerror("CPS2: not sorted #%4X %3d -> %3d\n", frame_cnt, last_y, cur_y );
+            sorted = false;
+        }
+        last_y = cur_y;*/
 
 		if (colour & 0x80)
 		{
@@ -3057,9 +3101,9 @@ void cps2_state::cps2_render_sprites( screen_device &screen, bitmap_ind16 &bitma
 				/* Y flip */
 				if (colour & 0x20)
 				{
-					for (nys = 0; nys < ny; nys++)
+					for (nys = 0; nys < ny && obj_cnt<obj_limit; nys++)
 					{
-						for (nxs = 0; nxs < nx; nxs++)
+						for (nxs = 0; nxs < nx && obj_cnt<obj_limit; nxs++)
 						{
 							sx = (x + nxs * 16 + xoffs) & 0x3ff;
 							sy = (y + nys * 16 + yoffs) & 0x3ff;
@@ -3073,9 +3117,9 @@ void cps2_state::cps2_render_sprites( screen_device &screen, bitmap_ind16 &bitma
 				}
 				else
 				{
-					for (nys = 0; nys < ny; nys++)
+					for (nys = 0; nys < ny && obj_cnt<obj_limit; nys++)
 					{
-						for (nxs = 0; nxs < nx; nxs++)
+						for (nxs = 0; nxs < nx && obj_cnt<obj_limit; nxs++)
 						{
 							sx = (x + nxs * 16 + xoffs) & 0x3ff;
 							sy = (y + nys * 16 + yoffs) & 0x3ff;
@@ -3093,9 +3137,9 @@ void cps2_state::cps2_render_sprites( screen_device &screen, bitmap_ind16 &bitma
 			{
 				if (colour & 0x20)
 				{
-					for (nys = 0; nys < ny; nys++)
+					for (nys = 0; nys < ny && obj_cnt<obj_limit; nys++)
 					{
-						for (nxs = 0; nxs < nx; nxs++)
+						for (nxs = 0; nxs < nx && obj_cnt<obj_limit; nxs++)
 						{
 							sx = (x + nxs * 16 + xoffs) & 0x3ff;
 							sy = (y + nys * 16 + yoffs) & 0x3ff;
@@ -3110,9 +3154,9 @@ void cps2_state::cps2_render_sprites( screen_device &screen, bitmap_ind16 &bitma
 				}
 				else
 				{
-					for (nys = 0; nys < ny; nys++)
+					for (nys = 0; nys < ny && obj_cnt<obj_limit; nys++)
 					{
-						for (nxs = 0; nxs < nx; nxs++)
+						for (nxs = 0; nxs < nx && obj_cnt<obj_limit; nxs++)
 						{
 							sx = (x + nxs * 16 + xoffs) & 0x3ff;
 							sy = (y + nys * 16 + yoffs) & 0x3ff;
@@ -3138,6 +3182,33 @@ void cps2_state::cps2_render_sprites( screen_device &screen, bitmap_ind16 &bitma
 					(x+xoffs) & 0x3ff,(y+yoffs) & 0x3ff);
 		}
 	}
+    bool logout=false;
+    if( obj_cnt != 1024 ) first=false;
+    if( !first ) {
+        if( obj_cnt > obj_max ) {
+            obj_max = obj_cnt;
+            logout = true;
+        }
+        if( (m_cps2_last_sprite_offset>>2) > entry_max ) {
+            entry_max = m_cps2_last_sprite_offset>>2;
+            logout = true;
+        }
+        for( int k=0; k<256; k++ ) {
+            if( obj_cnt_line[k] > obj_cnt_line_max[k] )
+                obj_cnt_line_max[k] = obj_cnt_line[k];
+            if( obj_cnt_line_max[k]>maxline ) {
+                maxline = obj_cnt_line_max[k];
+                logout = true;
+            }
+        }
+    }
+    if( logout ) {
+        logerror("INFO: #%5d CPS2 drawn count %d (%d) - max per line %d - table entries %d (%d)\n",
+            frame_cnt, obj_cnt, obj_max, maxline, m_cps2_last_sprite_offset>>2, entry_max );
+        // if( !sorted )
+        //     logerror("INFO: CPS2 object table is not sorted\n");
+    }
+    frame_cnt++;
 }
 
 

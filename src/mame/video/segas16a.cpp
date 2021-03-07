@@ -8,8 +8,7 @@
 
 #include "emu.h"
 #include "includes/segas16a.h"
-
-
+#include <fstream>
 
 //-------------------------------------------------
 //  video_start - initialize the video system
@@ -86,6 +85,17 @@ uint32_t segas16a_state::screen_update(screen_device &screen, bitmap_ind16 &bitm
 				}
 			}
 		}
+
+	// Dump video memory
+	m_segaic16vid->dump_vram();
+    std::ofstream fout("pal.bin",std::ios_base::binary);
+    fout.write( (char*) &m_paletteram[0], 0x1000 );
+    fout.close();
+
+    fout.open("obj.bin",std::ios_base::binary);
+    fout.write( (char*) &m_sprites[0], 0x800 );
+    fout.close();
+
 
 	return 0;
 }

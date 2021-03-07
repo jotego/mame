@@ -207,7 +207,7 @@ inline u64 dsp16_device_base::core_state::dau_get_p_aligned() const
 	case 0x1:
 		return dau_p >> 2;
 	case 0x2:
-		return u64(dau_p) << 2;
+		return u64(dau_p<< 2);
 	case 0x3:
 	default:
 		throw emu_fatalerror("DSP16: reserved ALIGN value %01X (PC = %04X)\n", dau_auc_align(), xaau_pc/*FIXME: st_pcbase*/);
