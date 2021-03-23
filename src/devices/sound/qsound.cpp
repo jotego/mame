@@ -102,6 +102,7 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <iomanip>
 
 #define LOG_GENERAL     (1U << 0)
 #define LOG_COMMAND     (1U << 1)
@@ -139,6 +140,7 @@ qsound_device::qsound_device(machine_config const &mconfig, char const *tag, dev
 	, m_rom_bank(0U), m_rom_offset(0U), m_cmd_addr(0U), m_cmd_data(0U), m_new_data(0U), m_cmd_pending(0U), m_dsp_ready(1U)
 	, m_samples{ 0, 0 }, m_sr(0U), m_fsr(0U), m_ock(1U), m_old(1U), m_ready(0U), m_channel(0U)
 {
+    flog.open("qsnd_cmd.log");
 }
 
 
@@ -317,6 +319,7 @@ WRITE_LINE_MEMBER(qsound_device::dsp_ock_w)
 			if (!m_channel)
 				m_stream->update();
 			m_samples[m_channel] = m_sr;
+            m_samplecnt++;
 #if 0 // enable to log PCM to a file - can be imported with "ffmpeg -f s16be -ar 24038 -ac 2 -i qsound.pcm qsound.wav"
 			static std::ofstream logfile("qsound.pcm", std::ios::binary);
 			logfile.put(u8(m_sr >> 8));
@@ -389,4 +392,7 @@ void qsound_device::set_cmd(void *ptr, s32 param)
 	m_cmd_data = u16(u32(param));
 	m_cmd_pending = 1U;
 	m_dsp->set_input_line(DSP16_INT_LINE, ASSERT_LINE);
+    flog << m_samplecnt << " "
+         << m_cmd_addr << " "
+         << m_cmd_data << '\n';
 }

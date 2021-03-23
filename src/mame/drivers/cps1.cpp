@@ -411,7 +411,7 @@ void fdebug_report( std::ofstream& fdebug, int base, int offset, int data, bool 
 
 uint16_t cps_state::qsound_sharedram1_r(offs_t offset)
 {
-  fdebug_report( fdebug, 0xf18000, offset, m_qsound_sharedram1[offset], true );
+  //fdebug_report( fdebug, 0xf18000, offset, m_qsound_sharedram1[offset], true );
 	return m_qsound_sharedram1[offset] | 0xff00;
 }
 
@@ -419,13 +419,13 @@ void cps_state::qsound_sharedram1_w(offs_t offset, uint16_t data, uint16_t mem_m
 {
 	if (ACCESSING_BITS_0_7) {
 		m_qsound_sharedram1[offset] = data;
-    fdebug_report( fdebug, 0xf18000, offset, data, false );
+    //fdebug_report( fdebug, 0xf18000, offset, data, false );
   }
 }
 
 uint16_t cps_state::qsound_sharedram2_r(offs_t offset)
 {
-  fdebug_report( fdebug, 0xf1e000, offset, m_qsound_sharedram2[offset], true );
+  //fdebug_report( fdebug, 0xf1e000, offset, m_qsound_sharedram2[offset], true );
 	return m_qsound_sharedram2[offset] | 0xff00;
 }
 
@@ -433,7 +433,7 @@ void cps_state::qsound_sharedram2_w(offs_t offset, uint16_t data, uint16_t mem_m
 {
 	if (ACCESSING_BITS_0_7) {
 		m_qsound_sharedram2[offset] = data;
-    fdebug_report( fdebug, 0xf1e000, offset, data, false );
+    //fdebug_report( fdebug, 0xf1e000, offset, data, false );
   }
 }
 

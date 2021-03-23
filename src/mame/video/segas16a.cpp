@@ -93,7 +93,8 @@ uint32_t segas16a_state::screen_update(screen_device &screen, bitmap_ind16 &bitm
     fout.close();
 
     fout.open("obj.bin",std::ios_base::binary);
-    fout.write( (char*) &m_sprites[0], 0x800 );
+    //fout.write( (char*) m_sprites.target()->buffer(), 0x800 );
+    fout.write( (char*) m_sprites.target()->spriteram(), 0x800 );
     fout.close();
 
 

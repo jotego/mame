@@ -64,6 +64,7 @@ private:
 	s16 m_samples[2];
 	u16 m_sr, m_fsr;
 	u8 m_ock, m_old, m_ready, m_channel;
+	size_t m_samplecnt=0;
 };
 
 DECLARE_DEVICE_TYPE(QSOUND, qsound_device)
