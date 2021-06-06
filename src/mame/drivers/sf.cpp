@@ -293,6 +293,8 @@ void sf_state::prot_ram_w(offs_t offset, u8 data)
 	else
 		offset = 0xc00000 | (offset & 0x7fff);
 
+	logerror("SF: MCU writes %X to %X\n", data, offset );
+
 	m_maincpu->space(AS_PROGRAM).write_byte(offset, data);
 }
 
@@ -303,6 +305,8 @@ u8 sf_state::prot_ram_r(offs_t offset)
 		offset = 0xff8000 | offset;
 	else
 		offset = 0xc00000 | (offset & 0x7fff);
+
+	logerror("SF: MCU reads from %X\n", offset );
 
 	return m_maincpu->space(AS_PROGRAM).read_byte(offset);
 }
