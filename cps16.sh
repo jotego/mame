@@ -7,5 +7,15 @@ fi
 TARGET=~/git/jts16/ver/game/$1
 mkdir -p $TARGET
 for i in char obj pal scr; do
-    cp -v $i.bin ~/git/jts16/ver/game/$i$2.bin
+    cp -v $i.bin $TARGET/$i$2.bin
 done
+
+MAMESNAP=~/.mame/snap/$1
+
+if [ ! -d $MAMESNAP ]; then
+    echo Warning: no MAME snapshot for $1
+else
+    # copy latest snap file from MAME
+    LATEST=$(ls $MAMESNAP -t | head -n 1)
+    cp -v $MAMESNAP/$LATEST $TARGET/$2.png
+fi

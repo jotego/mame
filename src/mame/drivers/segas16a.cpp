@@ -228,6 +228,7 @@ void segas16a_state::tilemap_sound_w(uint8_t data)
 	//       1= sound is enabled
 	//
 	m_soundcpu->set_input_line(INPUT_LINE_NMI, (data & 0x80) ? CLEAR_LINE : ASSERT_LINE);
+    // row scroll
 	m_segaic16vid->tilemap_set_colscroll(0, ~data & 0x04);
 	m_segaic16vid->tilemap_set_rowscroll(0, ~data & 0x02);
 }
