@@ -1617,11 +1617,11 @@ uint16_t segaic16_video_device::rotate_control_r()
 
 #include <fstream>
 
-void segaic16_video_device::dump_vram() {
+void segaic16_video_device::dump_vram(int vram_size) {
     std::ofstream fout("char.bin",std::ios_base::binary);
     fout.write( (char*) &m_textram[0], 0x1000 );
     fout.close();
     fout.open("scr.bin",std::ios_base::binary);
-    fout.write( (char*) &m_tileram[0], 0x8000 );
+    fout.write( (char*) &m_tileram[0], vram_size );
     fout.close();
 }

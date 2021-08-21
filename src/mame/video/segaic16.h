@@ -76,7 +76,7 @@ public:
 
 	static constexpr unsigned ROTATE_YBOARD      = 0;
 
-	void dump_vram();
+	void dump_vram(int vram_size=0x8000);
 
 	struct tilemap_callback_info
 	{

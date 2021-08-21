@@ -8,7 +8,7 @@
 
 #include "emu.h"
 #include "includes/segas16b.h"
-
+#include <fstream>
 
 
 //-------------------------------------------------
@@ -88,6 +88,17 @@ uint32_t segas16b_state::screen_update(screen_device &screen, bitmap_ind16 &bitm
 				}
 			}
 		}
+
+	// Dump video memory
+	m_segaic16vid->dump_vram(0x10000);
+    std::ofstream fout("pal.bin",std::ios_base::binary);
+    fout.write( (char*) &m_paletteram[0], 0x1000 );
+    fout.close();
+
+    fout.open("obj.bin",std::ios_base::binary);
+    //fout.write( (char*) m_sprites.target()->buffer(), 0x800 );
+    fout.write( (char*) m_sprites.target()->spriteram(), 0x800 );
+    fout.close();
 
 	return 0;
 }
