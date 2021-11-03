@@ -40,6 +40,7 @@ uint16_t dec0_state::dec0_controls_r(offs_t offset)
 
 		case 8: /* Intel 8751 mc, Bad Dudes, Heavy Barrel & Birdie Try only */
 			//logerror("CPU #0 PC %06x: warning - read i8751 %06x - %04x\n", m_maincpu->pc(), 0x30c000+offset, m_i8751_return);
+			logerror("CPU #0 PC %06x: warning - read i8751 %06x - %04x\n", m_maincpu->pc(), 0x30c000+offset, m_i8751_return);
 			return m_i8751_return;
 	}
 

@@ -124,7 +124,8 @@
 
 #include "emu.h"
 #include "upd7759.h"
-
+#include <iostream>
+#include <iomanip>
 
 #define DEBUG_STATES    (0)
 
@@ -386,6 +387,10 @@ void upd775x_device::update_adpcm(int data)
 
 void upd775x_device::advance_state()
 {
+	static int8_t state_l=-1;
+	bool newline=false;
+	if( state_l != STATE_DROP_DRQ )
+		std::cout << "udp7759: ";
 	switch (m_state)
 	{
 		/* Idle state: we stick around here while there's nothing to do */
@@ -480,6 +485,7 @@ void upd775x_device::advance_state()
 		case STATE_DUMMY2:
 			m_offset++;
 			m_first_valid_header = 0;
+			std::cout << "valid set to 0 -- ";
 			if (DEBUG_STATES) logerror("dummy2, requesting block header\n");
 			m_drq = 1;
 
@@ -505,6 +511,8 @@ void upd775x_device::advance_state()
 			switch (m_block_header & 0xc0)
 			{
 				case 0x00:  /* silence */
+					std::cout<<"************ Silence (valid=" << std::dec
+					         << (unsigned) m_first_valid_header << ")\t"; newline=true;
 					m_clocks_left = 1024 * ((m_block_header & 0x3f) + 1);
 					m_state = (m_block_header == 0 && m_first_valid_header) ? STATE_IDLE : STATE_BLOCK_HEADER;
 					m_sample = 0;
@@ -512,6 +520,7 @@ void upd775x_device::advance_state()
 					break;
 
 				case 0x40:  /* 256 nibbles */
+					std::cout<<"************ Play 256 \t"; newline=true;
 					m_sample_rate = (m_block_header & 0x3f) + 1;
 					m_nibbles_left = 256;
 					m_clocks_left = 36; /* just a guess */
@@ -519,12 +528,14 @@ void upd775x_device::advance_state()
 					break;
 
 				case 0x80:  /* n nibbles */
+					std::cout<<"************ Play n \t"; newline=true;
 					m_sample_rate = (m_block_header & 0x3f) + 1;
 					m_clocks_left = 36; /* just a guess */
 					m_state = STATE_NIBBLE_COUNT;
 					break;
 
 				case 0xc0:  /* repeat loop */
+					std::cout<<"************ Repeat \t"; newline=true;
 					m_repeat_count = (m_block_header & 7) + 1;
 					m_repeat_offset = m_offset;
 					m_clocks_left = 36; /* just a guess */
@@ -585,6 +596,29 @@ void upd775x_device::advance_state()
 		m_state = STATE_DROP_DRQ;
 		m_clocks_left = 21;
 	}
+
+	if( m_state != state_l ) {
+		if( state_l!= STATE_DROP_DRQ ) {
+			switch( state_l ) {
+				case STATE_IDLE: std::cout << "idle"; break;
+				case STATE_DROP_DRQ: std::cout << "drop_drq"; break;
+				case STATE_START: std::cout << "start"; break;
+				case STATE_FIRST_REQ: std::cout << "first_req"; break;
+				case STATE_LAST_SAMPLE: std::cout << "last_sample"; break;
+				case STATE_DUMMY1: std::cout << "dummy1"; break;
+				case STATE_ADDR_MSB: std::cout << "addr_msb"; break;
+				case STATE_ADDR_LSB: std::cout << "addr_lsb"; break;
+				case STATE_DUMMY2: std::cout << "dummy2"; break;
+				case STATE_BLOCK_HEADER: std::cout << "block_header"; break;
+				case STATE_NIBBLE_COUNT: std::cout << "nibble_count"; break;
+				case STATE_NIBBLE_MSN: std::cout << "nibble_msn"; break;
+				case STATE_NIBBLE_LSN: std::cout << "nibble_lsn"; break;
+			}
+			std::cout << "\t(" << std::hex << (unsigned)m_fifo_in << ")\n";
+		}
+		state_l = m_state;
+	}
+	if( newline ) std::cout << '\n';
 }
 
 /************************************************************
@@ -655,8 +689,10 @@ void upd775x_device::internal_reset_w(int state)
 	m_channel->update();
 
 	/* on the falling edge, reset everything */
-	if (oldreset && !m_reset)
+	if (oldreset && !m_reset) {
+		std::cout << "udp7759 RESET\n";
 		device_reset();
+	}
 }
 
 WRITE_LINE_MEMBER( upd775x_device::start_w )
@@ -710,6 +746,7 @@ void upd7756_device::internal_start_w(int state)
 
 void upd775x_device::port_w(u8 data)
 {
+	std::cout << "\tudp7759: CPU writes " << std::hex << (unsigned) data << '\n';
 	/* update the FIFO value */
 	synchronize(TID_PORT_WRITE, data);
 }

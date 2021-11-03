@@ -356,6 +356,7 @@ void dec0_state::dec0_control_w(offs_t offset, uint16_t data, uint16_t mem_mask)
 
 		case 6: /* Intel 8751 microcontroller - Bad Dudes, Heavy Barrel, Birdie Try, Bandit only */
 			dec0_i8751_write(data);
+                  logerror("CPU #0 PC %06x: warning - write %02x to i8751 %06x\n",m_maincpu->pc(),data,0x30c010+(offset<<1));
 			break;
 
 		case 8: /* Interrupt ack (VBL - IRQ 6) */

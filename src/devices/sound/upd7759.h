@@ -43,7 +43,7 @@ protected:
 	// chip states
 	enum
 	{
-		STATE_IDLE,
+		STATE_IDLE=0,
 		STATE_DROP_DRQ,
 		STATE_START,
 		STATE_FIRST_REQ,
