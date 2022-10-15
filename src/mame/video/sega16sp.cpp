@@ -1179,7 +1179,6 @@ void sega_outrun_sprite_device::draw(bitmap_ind16 &bitmap, const rectangle &clip
 							(( pixels >> 20) & 0x000000f0) |
 							(( pixels >> 28) & 0x0000000f);
 					}
-					// bool last_data = (pixels & 0xf0) == 0xf0;
 					bool last_data = (pixels & 0x0f00'0000) == 0x0f00'0000;
 
 					// draw four pixels
