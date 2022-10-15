@@ -1161,14 +1161,14 @@ void sega_outrun_sprite_device::draw(bitmap_ind16 &bitmap, const rectangle &clip
 				int xacc = 0;
 				int x;
 
+				data[7] = addr;
 				// non-flipped case
 				if (!flip)
 				{
 					// start at the word before because we preincrement below
-					data[7] = addr - 1;
 					for (x = xpos; (xdelta > 0 && x <= cliprect.max_x) || (xdelta < 0 && x >= cliprect.min_x); )
 					{
-						uint32_t pixels = spritedata[++data[7]];
+						uint32_t pixels = spritedata[data[7]++];
 
 						// draw four pixels
 						int pix;
@@ -1191,10 +1191,9 @@ void sega_outrun_sprite_device::draw(bitmap_ind16 &bitmap, const rectangle &clip
 				else
 				{
 					// start at the word after because we predecrement below
-					data[7] = addr + 1;
 					for (x = xpos; (xdelta > 0 && x <= cliprect.max_x) || (xdelta < 0 && x >= cliprect.min_x); )
 					{
-						uint32_t pixels = spritedata[--data[7]];
+						uint32_t pixels = spritedata[data[7]--];
 
 						// draw four pixels
 						int pix;
