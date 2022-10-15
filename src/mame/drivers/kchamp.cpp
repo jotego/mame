@@ -165,18 +165,19 @@ void kchamp_state::kc_sound_control_w(offs_t offset, uint8_t data)
 		if (!m_sound_nmi_enable)
 			m_audiocpu->set_input_line(INPUT_LINE_NMI, CLEAR_LINE);
 	}
-	else
-		m_dac->set_output_gain(0, BIT(data,0) ? 1.0 : 0);
+	// else
+	// 	m_dac->set_output_gain(0, BIT(data,0) ? 1.0 : 0);
 }
 
 void kchamp_state::kchamp_map(address_map &map)
 {
 	map(0x0000, 0xbfff).rom();
-	map(0xc000, 0xdfff).ram();
+	//map(0xc000, 0xdfff).ram();
+	map(0xc000, 0xcfff).ram();
 	map(0xe000, 0xe3ff).ram().w(FUNC(kchamp_state::kchamp_videoram_w)).share("videoram");
 	map(0xe400, 0xe7ff).ram().w(FUNC(kchamp_state::kchamp_colorram_w)).share("colorram");
 	map(0xea00, 0xeaff).ram().share("spriteram");
-	map(0xeb00, 0xffff).ram();
+	//map(0xeb00, 0xffff).ram();
 }
 
 void kchamp_state::kchamp_io_map(address_map &map)
@@ -193,7 +194,8 @@ void kchamp_state::kchamp_io_map(address_map &map)
 void kchamp_state::kchamp_sound_map(address_map &map)
 {
 	map(0x0000, 0xdfff).rom();
-	map(0xe000, 0xe2ff).ram();
+	//map(0xe000, 0xe2ff).ram();
+	map(0xe000, 0xe7ff).ram();
 }
 
 void kchamp_state::kchamp_sound_io_map(address_map &map)

@@ -40,6 +40,7 @@ private:
 	void gng_bgvideoram_w(offs_t offset, uint8_t data);
 	void gng_bgscrollx_w(offs_t offset, uint8_t data);
 	void gng_bgscrolly_w(offs_t offset, uint8_t data);
+	void savepal_w(offs_t offset, uint8_t data);
 	DECLARE_WRITE_LINE_MEMBER(flipscreen_w);
 	TILE_GET_INFO_MEMBER(get_fg_tile_info);
 	TILE_GET_INFO_MEMBER(get_bg_tile_info);

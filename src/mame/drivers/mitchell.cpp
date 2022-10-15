@@ -145,7 +145,12 @@ uint8_t mitchell_state::pang_port5_r()
 	    otherwise music doesn't work.
 	*/
 
-	return (ioport("SYS0")->read() & 0xfe) | (m_irq_source & 1);
+	int p = (ioport("SYS0")->read() & 0xfe) | (m_irq_source & 1);
+	// p &=0xf7; // music
+	// p |= 4; // music
+	//p &= 0xfe; // music too fast
+	// p |= 1; // won't boot
+	return p;
 }
 
 void mitchell_state::eeprom_cs_w(uint8_t data)

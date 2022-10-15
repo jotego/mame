@@ -925,7 +925,10 @@ void segas16b_state::memory_mapper(sega_315_5195_mapper_device &mapper, uint8_t 
 			break;
 
 		case 3: // 16k or 256k of work RAM
-			mapper.map_as_ram(0x00000, m_workram.bytes(), ~(m_workram.bytes() - 1), "workram", write16_delegate(*this));
+			//mapper.map_as_ram(0x00000, m_workram.bytes(), ~(m_workram.bytes() - 1), "workram", write16_delegate(*this));
+            mapper.map_as_handler(0x00000, m_workram.bytes(), ~(m_workram.bytes() - 1),
+                read16_delegate(*this, FUNC(segas16b_state::ramdumper_r)),
+                write16_delegate(*this, FUNC(segas16b_state::ramdumper_w))); break;
 			break;
 
 		case 2: // 3rd ROM base, or board-specific banking
@@ -967,6 +970,32 @@ void segas16b_state::memory_mapper(sega_315_5195_mapper_device &mapper, uint8_t 
 			}
 			break;
 	}
+}
+
+uint16_t segas16b_state::ramdumper_r(address_space &space, offs_t offset, uint16_t mem_mask) {
+    uint16_t data=ramdump[offset];
+    return data;
+}
+
+void segas16b_state::ramdumper_w(address_space &space, offs_t offset, uint16_t data, uint16_t mem_mask) {
+    uint16_t v = ramdump[offset];
+    int ds=3;
+    if( ACCESSING_BITS_0_7 ) {
+        v &= 0xff00;
+        v |= data & 0xff;
+        ds&=2;
+    }
+    if( ACCESSING_BITS_8_15 ) {
+        v &= 0xff;
+        v |= data & 0xff00;
+        ds&=1;
+    }
+    ramdump[offset]=v;
+    switch(ds) {
+        case 0: printf("%04x << %04x\n",offset,data); break;
+        case 2: printf("%04x << --%02x\n",offset,data&0xff); break;
+        case 1: printf("%04x << %02x--\n",offset,(data>>8)&0xff); break;
+    }
 }
 
 
@@ -3943,12 +3972,21 @@ GFXDECODE_END
 //  GENERIC MACHINE DRIVERS
 //**************************************************************************
 
+void segas16b_state::my_irq4_line_hold(device_t &device) {
+    static int cnt=0;
+    if ( cnt < 130 && cnt>100 ) {
+        irq4_line_hold(device);
+    }
+    cnt++;
+}
+
 void segas16b_state::system16b(machine_config &config)
 {
+    for( int k=0; k<0x10000; k++ ) ramdump[k]=0xffff;
 	// basic machine hardware
 	M68000(config, m_maincpu, MASTER_CLOCK_10MHz);
 	m_maincpu->set_addrmap(AS_PROGRAM, &segas16b_state::system16b_map);
-	m_maincpu->set_vblank_int("screen", FUNC(segas16b_state::irq4_line_hold));
+	m_maincpu->set_vblank_int("screen", FUNC(segas16b_state::my_irq4_line_hold));
 
 	Z80(config, m_soundcpu, MASTER_CLOCK_10MHz/2);
 	m_soundcpu->set_addrmap(AS_PROGRAM, &segas16b_state::sound_map);

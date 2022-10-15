@@ -9,7 +9,7 @@
 #include "emu.h"
 #include "sega16sp.h"
 #include "segaic16.h"
-
+#include <fstream>
 
 
 //****************************************************************************
@@ -1095,6 +1095,12 @@ void sega_outrun_sprite_device::draw(bitmap_ind16 &bitmap, const rectangle &clip
 	const uint32_t *spritebase = &m_sprite_region_ptr[0];
 	uint8_t numbanks = m_sprite_region_ptr.bytes() / 0x40000;
 	uint16_t *ramend = buffer() + spriteram_elements();
+
+	// Save obj buffer
+	std::ofstream flog("/home/jtejada/git/jts16/cores/outrun/ver/game/obj.bin",std::ios_base::binary);
+	flog.write( (char*)buffer(), (int)(ramend-buffer()) );
+	flog.close();
+
 	for (uint16_t *data = buffer(); data < ramend; data += 8)
 	{
 		// stop when we hit the end of sprite list
@@ -1145,6 +1151,7 @@ void sega_outrun_sprite_device::draw(bitmap_ind16 &bitmap, const rectangle &clip
 		int maxy = cliprect.min_y - 1;
 		int yacc = 0;
 		int ytarget = top + ydelta * height;
+
 		for (int y = top; y != ytarget; y += ydelta)
 		{
 			// skip drawing if not within the cliprect

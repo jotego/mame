@@ -435,7 +435,7 @@ void dec0_state::dec0_map(address_map &map)
 	map(0x248400, 0x2487ff).rw(m_tilegen[1], FUNC(deco_bac06_device::pf_rowscroll_r), FUNC(deco_bac06_device::pf_rowscroll_w));
 	map(0x24a000, 0x24a7ff).rw(m_tilegen[1], FUNC(deco_bac06_device::pf_data_r), FUNC(deco_bac06_device::pf_data_w));
 
-	map(0x24c000, 0x24c007).w(m_tilegen[2], FUNC(deco_bac06_device::pf_control_0_w));                              /* second tile layer */
+	map(0x24c000, 0x24c007).w(m_tilegen[2], FUNC(deco_bac06_device::pf_control_0_w));                              // second tile layer
 	map(0x24c010, 0x24c017).w(m_tilegen[2], FUNC(deco_bac06_device::pf_control_1_w));
 	map(0x24c800, 0x24c87f).rw(m_tilegen[2], FUNC(deco_bac06_device::pf_colscroll_r), FUNC(deco_bac06_device::pf_colscroll_w));
 	map(0x24cc00, 0x24cfff).rw(m_tilegen[2], FUNC(deco_bac06_device::pf_rowscroll_r), FUNC(deco_bac06_device::pf_rowscroll_w));
@@ -478,24 +478,26 @@ void dec0_state::robocop_sub_map(address_map &map)
 {
 	map(0x000000, 0x00ffff).rom();
 	map(0x1f0000, 0x1f1fff).ram();                                 /* Main ram */
-	map(0x1f2000, 0x1f3fff).ram().share("robocop_shared");  /* Shared ram */
+	map(0x1f2000, 0x1f2fff).ram().share("robocop_shared");  /* Shared ram */
 }
 
 void dec0_state::hippodrm_map(address_map &map)
 {
 	dec0_map(map);
-	map(0x180000, 0x18003f).rw(FUNC(dec0_state::hippodrm_68000_share_r), FUNC(dec0_state::hippodrm_68000_share_w));
+	//map(0x180000, 0x18003f).rw(FUNC(dec0_state::hippodrm_68000_share_r), FUNC(dec0_state::hippodrm_68000_share_w));
+      map(0x180000, 0x181fff).rw(FUNC(dec0_state::hippodrm_68000_share_r), FUNC(dec0_state::hippodrm_68000_share_w));
 	map(0xffc800, 0xffcfff).w(FUNC(dec0_state::sprite_mirror_w));
 }
 
 void dec0_state::hippodrm_sub_map(address_map &map)
 {
 	map(0x000000, 0x00ffff).rom();
-	map(0x180000, 0x18001f).ram().share("hippodrm_shared");
+	//map(0x180000, 0x18001f).ram().share("hippodrm_shared");
+      map(0x180000, 0x180fff).ram().share("hippodrm_shared");
 	map(0x1a0000, 0x1a0007).w(m_tilegen[2], FUNC(deco_bac06_device::pf_control0_8bit_packed_w));
 	map(0x1a0010, 0x1a001f).w(m_tilegen[2], FUNC(deco_bac06_device::pf_control1_8bit_swap_w));
 	map(0x1a1000, 0x1a17ff).rw(m_tilegen[2], FUNC(deco_bac06_device::pf_data_8bit_swap_r), FUNC(deco_bac06_device::pf_data_8bit_swap_w));
-	map(0x1d0000, 0x1d00ff).rw(FUNC(dec0_state::hippodrm_prot_r), FUNC(dec0_state::hippodrm_prot_w));
+	//map(0x1d0000, 0x1d00ff).rw(FUNC(dec0_state::hippodrm_prot_r), FUNC(dec0_state::hippodrm_prot_w));
 	map(0x1f0000, 0x1f1fff).ram(); /* Main ram */
 }
 

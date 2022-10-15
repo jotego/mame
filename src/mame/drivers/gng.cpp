@@ -63,6 +63,17 @@ uint8_t gng_state::diamond_hack_r()
 	return 0;
 }
 
+void gng_state::savepal_w(offs_t offset, uint8_t data) {
+	FILE *f=fopen("pal_ram.bin","wb");
+	if( f!=NULL ) {
+		fwrite( m_palette->extmem().base(), 0x100,1,f );
+		fwrite( m_palette->basemem().base(), 0x100,1,f );
+		fclose(f);
+	} else {
+		printf("Cannot open pal_ram.bin\n");
+	}
+}
+
 void gng_state::gng_map(address_map &map)
 {
 	map(0x0000, 0x1dff).ram();
@@ -79,6 +90,7 @@ void gng_state::gng_map(address_map &map)
 	map(0x3a00, 0x3a00).w("soundlatch", FUNC(generic_latch_8_device::write));
 	map(0x3b08, 0x3b09).w(FUNC(gng_state::gng_bgscrollx_w));
 	map(0x3b0a, 0x3b0b).w(FUNC(gng_state::gng_bgscrolly_w));
+	map(0x3c00, 0x3cff).w(FUNC(gng_state::savepal_w));
 	// 0x3c00 is the DMA trigger. Not emulated.
 	map(0x3d00, 0x3d07).w("mainlatch", FUNC(ls259_device::write_d0));
 	map(0x3e00, 0x3e00).w(FUNC(gng_state::gng_bankswitch_w));

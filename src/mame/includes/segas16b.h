@@ -98,6 +98,7 @@ public:
 	void system16b_fd1094(machine_config &config);
 	void fpointbl(machine_config &config);
 	void lockonph(machine_config &config);
+	void my_irq4_line_hold(device_t &device);
 
 	// ROM board-specific driver init
 	void init_generic_5521();
@@ -153,6 +154,10 @@ protected:
 	void upd7759_control_w(uint8_t data);
 	uint8_t upd7759_status_r();
 	void sound_w16(uint16_t data);
+
+	uint16_t ramdumper_r(address_space &space, offs_t offset, uint16_t mem_mask);
+	void ramdumper_w(address_space &space, offs_t offset, uint16_t data, uint16_t mem_mask);
+	uint16_t ramdump[0x10000];
 
 	// other callbacks
 	DECLARE_WRITE_LINE_MEMBER(upd7759_generate_nmi);
