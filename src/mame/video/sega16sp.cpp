@@ -1181,10 +1181,17 @@ void sega_outrun_sprite_device::draw(bitmap_ind16 &bitmap, const rectangle &clip
 					}
 					bool last_data = (pixels & 0x0f00'0000) == 0x0f00'0000;
 
-					// draw four pixels
+					// draw eight pixels
 					for( int k=0; k<8; k++ ) {
-						int pix;
-						pix = pixels & 0xf; while (xacc < 0x200) { if (x >= cliprect.min_x && x <= cliprect.max_x && pix != 0 && pix != 15) dest[x] = colpri | pix; x += xdelta; xacc += hzoom; } xacc -= 0x200; pixels>>=4;
+						int pix = pixels & 0xf;
+						while (xacc < 0x200) {
+							if (x >= cliprect.min_x && x <= cliprect.max_x && pix != 0 && pix != 15)
+								dest[x] = colpri | pix;
+							x += xdelta;
+							xacc += hzoom;
+						}
+						xacc -= 0x200;
+						pixels>>=4;
 					}
 
 					// stop if the second-to-last pixel in the group was 0xf
