@@ -5,6 +5,7 @@
 #include "emu.h"
 #include "segaic16_road.h"
 #include "video/resnet.h"
+#include <fstream>
 
 DEFINE_DEVICE_TYPE(SEGAIC16_ROAD, segaic16_road_device, "segaic16_road", "Sega 16-bit Road Generator")
 
@@ -351,6 +352,12 @@ void segaic16_road_device::segaic16_road_outrun_decode(road_info *info)
 static void segaic16_road_outrun_draw(segaic16_road_device::road_info *info, bitmap_ind16 &bitmap, const rectangle &cliprect, int priority)
 {
 	const u16 *roadram = info->buffer.get();
+	auto fdump = std::ofstream("/home/jtejada/git/jts16/cores/outrun/ver/game/roadram.bin",std::ios_base::binary);
+	fdump.write( (char*)roadram, 8<<10 );
+	fdump.close();
+	fdump.open("/home/jtejada/git/jts16/cores/outrun/ver/game/roadctrl.hex",std::ios_base::trunc);
+	fdump << (int)info->control << '\n';
+	fdump.close();
 
 	/* loop over scanlines */
 	for (int y = cliprect.min_y; y <= cliprect.max_y; y++)
