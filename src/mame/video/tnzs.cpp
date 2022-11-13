@@ -10,6 +10,7 @@
 
 #include "emu.h"
 #include "includes/tnzs.h"
+#include <fstream>
 
 /***************************************************************************
 
@@ -51,6 +52,9 @@ uint32_t tnzs_base_state::screen_update_tnzs(screen_device &screen, bitmap_ind16
 	m_seta001->set_bg_yoffsets( 0x1, -0x1 );
 
 	m_seta001->draw_sprites(screen, bitmap, cliprect, 0x800);
+	std::ofstream fout("/home/jtejada/git/jtbubl/cores/kiwi/ver/game/pal.bin");
+	fout.write( (const char*) m_palette.target()->basemem().base(), 0x400 );
+	fout.close();
 	return 0;
 }
 

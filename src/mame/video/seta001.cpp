@@ -35,7 +35,7 @@
 #include "emu.h"
 #include "seta001.h"
 #include "screen.h"
-
+#include <fstream>
 
 DEFINE_DEVICE_TYPE(SETA001_SPRITE, seta001_device, "seta001", "Seta SETA001 Sprites")
 
@@ -289,28 +289,41 @@ void seta001_device::draw_background( bitmap_ind16 &bitmap, const rectangle &cli
 	if (numcol == 1)
 		numcol = 16;
 
-	upper = m_spritectrl[2] + m_spritectrl[3] * 256;
+	upper = (m_spritectrl[3]<<8) | m_spritectrl[2];
+
+	std::ofstream fout("/home/jtejada/git/jtbubl/cores/kiwi/ver/game/seta_cfg.hex");
+	for (int k=0; k<4; k++) fout << std::hex << (unsigned)m_spritectrl[k] << '\n';
+	fout.close();
+	fout.open("/home/jtejada/git/jtbubl/cores/kiwi/ver/game/vram_lo.bin");
+	fout.write( (const char*) m_spritecodelow.get(), 0x1000 );
+	fout.close();
+	fout.open("/home/jtejada/git/jtbubl/cores/kiwi/ver/game/vram_hi.bin");
+	fout.write( (const char*) m_spritecodehigh.get(), 0x1000 );
+	fout.close();
+	fout.open("/home/jtejada/git/jtbubl/cores/kiwi/ver/game/col.bin");
+	fout.write( (const char*) m_spriteylow.get(), 0x400 );
+	fout.close();
 
 	for (col = 0; col < numcol; col++)
 	{
 		scrollx = scrollram[col * 0x10 + 4];
 		scrolly = scrollram[col * 0x10];
+		int scrollx_msb = (upper&(1<<col))!=0;
+		scrollx |= (scrollx_msb<<8);
 
 		/* draw this column */
 		for ( offs = 0 ; offs < 0x20; offs += 1 )
 		{
-			int i = ((col+startcol)&0xf) * 32 + offs;
+			int i = (((col+startcol)&0xf)<<5) | offs | 0x400 | bank;
 
-			int code = ((m_spritecodehigh[i+0x400+bank]) << 8) | m_spritecodelow[i+0x400+bank];
-			int color =((m_spritecodehigh[i+0x600+bank]) << 8) | m_spritecodelow[i+0x600+bank];
+			int code = ((m_spritecodehigh[i]) << 8) | m_spritecodelow[i];
+			int color =((m_spritecodehigh[i|0x200]) << 8) | m_spritecodelow[i|0x200];
 
 			int flipx   =   code & 0x8000;
 			int flipy   =   code & 0x4000;
 
-			int sx      =     scrollx + xoffs  + (offs & 1) * 16;
-			int sy      =   -(scrolly + yoffs) + (offs / 2) * 16;
-
-			if (upper & (1 << col)) sx -= 256;
+			int sx      =     scrollx + xoffs  + ((offs & 1)<<4);
+			int sy      =   -(scrolly + yoffs) + ((offs >>1)<<4);
 
 			if (flip)
 			{
