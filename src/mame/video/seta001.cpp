@@ -253,11 +253,11 @@ void seta001_device::draw_background( bitmap_ind16 &bitmap, const rectangle &cli
 
 	int const total_color_codes   =   m_gfxdecode->gfx(0)->colors();
 
-	int const ctrl    =   m_spritectrl[0];
-	int const ctrl2   =   m_spritectrl[1];
+	int const ctrl0   =   m_spritectrl[0];
+	int const ctrl1   =   m_spritectrl[1];
 
-	int const flip    =   ctrl & 0x40;
-	int numcol  =   ctrl2 & 0x0f;
+	int const flip    =   ctrl0 & 0x40;
+	int numcol  =   ctrl1 & 0x0f;
 
 	int scrollx, scrolly;
 
@@ -266,16 +266,17 @@ void seta001_device::draw_background( bitmap_ind16 &bitmap, const rectangle &cli
 	const uint8_t* scrollram = &m_spriteylow[0x200];
 
 	/* Sprites Banking and/or Sprites Buffering */
-	uint16_t bank = ( ((ctrl2 ^ (~ctrl2<<1)) & 0x40) ? bank_size : 0 );
+	// uint16_t bank = ( ((ctrl1 ^ (~ctrl1<<1)) & 0x40) ? bank_size : 0 );
+	uint16_t bank = (ctrl1 & 0x40) ? bank_size : 0;
 
 	int const max_y   =   0xf0;
 
 	int startcol = 0;
 
-	if (ctrl & 0x01)
+	if (ctrl0 & 0x01)
 		startcol += 0x4;
 
-	if (ctrl & 0x02)
+	if (ctrl0 & 0x02)
 		startcol += 0x8;
 
 	xoffs = flip ? m_bg_flipxoffs : m_bg_noflipxoffs;
