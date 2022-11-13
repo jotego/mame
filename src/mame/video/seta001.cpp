@@ -313,9 +313,11 @@ void seta001_device::draw_background( bitmap_ind16 &bitmap, const rectangle &cli
 		scrollx |= (scrollx_msb<<8);
 
 		/* draw this column */
-		for ( offs = 0 ; offs < 0x20; offs += 1 )
+		for ( offs = 0 ; offs < 0x10; offs += 1 )
+		for( int half=0; half<2; half++ )
 		{
-			int i = (((col+startcol)&0xf)<<5) | offs | 0x400 | bank;
+			int vaddr = (offs+(scrolly>>4))&0xf;
+			int i = (((col+startcol)&0xf)<<5) | (( vaddr )<<1) | half | 0x400 | bank;
 
 			int code = ((m_spritecodehigh[i]) << 8) | m_spritecodelow[i];
 			int color =((m_spritecodehigh[i|0x200]) << 8) | m_spritecodelow[i|0x200];
@@ -323,8 +325,8 @@ void seta001_device::draw_background( bitmap_ind16 &bitmap, const rectangle &cli
 			int flipx   =   code & 0x8000;
 			int flipy   =   code & 0x4000;
 
-			int sx      =     scrollx + xoffs  + ((offs & 1)<<4);
-			int sy      =   -(scrolly + yoffs) + ((offs >>1)<<4);
+			int sx      =     scrollx + xoffs  + (half<<4);
+			int sy      =   -( (scrolly&0xf) + yoffs) + (offs <<4);
 
 			if (flip)
 			{
