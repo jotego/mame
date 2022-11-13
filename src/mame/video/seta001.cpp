@@ -305,19 +305,20 @@ void seta001_device::draw_background( bitmap_ind16 &bitmap, const rectangle &cli
 	fout.write( (const char*) m_spriteylow.get(), 0x400 );
 	fout.close();
 
-	for (col = 0; col < numcol; col++)
+	for (col = 0; col < (numcol<<1); col++)
 	{
-		scrollx = scrollram[col * 0x10 + 4];
-		scrolly = scrollram[col * 0x10];
-		int scrollx_msb = (upper&(1<<col))!=0;
+		int colm = col>>1;
+		int half = col&1;
+		scrollx = scrollram[ colm * 0x10 + 4];
+		scrolly = scrollram[ colm * 0x10];
+		int scrollx_msb = (upper&(1<<colm))!=0;
 		scrollx |= (scrollx_msb<<8);
 
 		/* draw this column */
 		for ( offs = 0 ; offs < 0x10; offs += 1 )
-		for( int half=0; half<2; half++ )
 		{
 			int vaddr = (offs+(scrolly>>4))&0xf;
-			int i = (((col+startcol)&0xf)<<5) | (( vaddr )<<1) | half | 0x400 | bank;
+			int i = (((colm+startcol)&0xf)<<5) | (( vaddr )<<1) | half | 0x400 | bank;
 
 			int code = ((m_spritecodehigh[i]) << 8) | m_spritecodelow[i];
 			int color =((m_spritecodehigh[i|0x200]) << 8) | m_spritecodelow[i|0x200];
