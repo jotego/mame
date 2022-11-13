@@ -308,7 +308,6 @@ void seta001_device::draw_background( bitmap_ind16 &bitmap, const rectangle &cli
 	for (col = 0; col < (numcol<<1); col++)
 	{
 		int colm = col>>1;
-		int half = col&1;
 		scrollx = scrollram[ colm * 0x10 + 4];
 		scrolly = scrollram[ colm * 0x10];
 		int scrollx_msb = (upper&(1<<colm))!=0;
@@ -318,7 +317,9 @@ void seta001_device::draw_background( bitmap_ind16 &bitmap, const rectangle &cli
 		for ( offs = 0 ; offs < 0x10; offs += 1 )
 		{
 			int vaddr = (offs+(scrolly>>4))&0xf;
-			int i = (((colm+startcol)&0xf)<<5) | (( vaddr )<<1) | half | 0x400 | bank;
+			int haddr = col+(startcol<<1);
+			int half = haddr&1;
+			int i = (((haddr)&0x1e)<<4) | (( vaddr )<<1) | half | 0x400 | bank;
 
 			int code = ((m_spritecodehigh[i]) << 8) | m_spritecodelow[i];
 			int color =((m_spritecodehigh[i|0x200]) << 8) | m_spritecodelow[i|0x200];
