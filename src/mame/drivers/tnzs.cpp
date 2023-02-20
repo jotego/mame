@@ -731,7 +731,7 @@ void tnzs_base_state::main_map(address_map &map)
 	map(0xf300, 0xf303).mirror(0xfc).w(m_seta001, FUNC(seta001_device::spritectrl_w8));  /* control registers (0x80 mirror used by Arkanoid 2) */
 	map(0xf400, 0xf400).w(m_seta001, FUNC(seta001_device::spritebgflag_w8));   /* enable / disable background transparency */
 	map(0xf600, 0xf600).nopr().w(FUNC(tnzs_base_state::ramrom_bankswitch_w));
-	map(0xf800, 0xfbff).ram().w(m_palette, FUNC(palette_device::write8)).share("palette");
+	map(0xf800, 0xfbff).mirror(0x0400).ram().w(m_palette, FUNC(palette_device::write8)).share("palette");
 }
 
 void extrmatn_state::prompal_main_map(address_map &map)

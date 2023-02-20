@@ -292,16 +292,17 @@ void seta001_device::draw_background( bitmap_ind16 &bitmap, const rectangle &cli
 
 	upper = (m_spritectrl[3]<<8) | m_spritectrl[2];
 
-	std::ofstream fout("/home/jtejada/git/jtbubl/cores/kiwi/ver/game/seta_cfg.hex");
+
+	std::ofstream fout("/home/jtejada/git/jtbubl/cores/kiwi/ver/extrm/seta_cfg.hex");
 	for (int k=0; k<4; k++) fout << std::hex << (unsigned)m_spritectrl[k] << '\n';
 	fout.close();
-	fout.open("/home/jtejada/git/jtbubl/cores/kiwi/ver/game/vram_lo.bin");
+	fout.open("/home/jtejada/git/jtbubl/cores/kiwi/ver/extrm/vram_lo.bin");
 	fout.write( (const char*) m_spritecodelow.get(), 0x1000 );
 	fout.close();
-	fout.open("/home/jtejada/git/jtbubl/cores/kiwi/ver/game/vram_hi.bin");
+	fout.open("/home/jtejada/git/jtbubl/cores/kiwi/ver/extrm/vram_hi.bin");
 	fout.write( (const char*) m_spritecodehigh.get(), 0x1000 );
 	fout.close();
-	fout.open("/home/jtejada/git/jtbubl/cores/kiwi/ver/game/col.bin");
+	fout.open("/home/jtejada/git/jtbubl/cores/kiwi/ver/extrm/col.bin");
 	fout.write( (const char*) m_spriteylow.get(), 0x400 );
 	fout.close();
 

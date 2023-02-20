@@ -373,7 +373,7 @@ void karnov_state::karnov_map(address_map &map)
 	map(0x080000, 0x080fff).ram().share("spriteram");
 	map(0x0a0000, 0x0a07ff).ram().w(FUNC(karnov_state::videoram_w)).share("videoram");
 	map(0x0a0800, 0x0a0fff).w(FUNC(karnov_state::videoram_w)); /* Wndrplnt Mirror */
-	map(0x0a1000, 0x0a17ff).w(FUNC(karnov_state::playfield_w)).share("pf_data");
+	map(0x0a1000, 0x0a17ff).ram().w(FUNC(karnov_state::playfield_w)).share("pf_data");
 	map(0x0a1800, 0x0a1fff).lw16([this](offs_t offset, u16 data, u16 mem_mask)
 							{ playfield_w(((offset & 0x1f) << 5) | ((offset & 0x3e0) >> 5), data, mem_mask); }, "pf_col_w");
 	map(0x0c0000, 0x0c0001).portr("P1_P2").w(FUNC(karnov_state::mcusim_ack_w));

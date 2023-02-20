@@ -20,7 +20,7 @@
 
 uint8_t tnzs_mcu_state::mcu_r(offs_t offset)
 {
-	uint8_t data = m_mcu->upi41_master_r(offset & 1);
+	uint8_t data = m_mcu->upi41_master_r( offset & 1);
 	m_subcpu->yield();
 
 //  logerror("%s: read %02x from mcu $c00%01x\n", m_maincpu->pcbase(), data, offset);
