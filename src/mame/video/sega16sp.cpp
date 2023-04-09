@@ -1097,7 +1097,7 @@ void sega_outrun_sprite_device::draw(bitmap_ind16 &bitmap, const rectangle &clip
 	uint16_t *ramend = buffer() + spriteram_elements();
 
 	// Save obj buffer
-	std::ofstream flog("/home/jtejada/git/jts16/cores/outrun/ver/game/obj.bin",std::ios_base::binary);
+	std::ofstream flog("/home/jtejada/git/jtcores/cores/outrun/ver/game/obj.bin",std::ios_base::binary);
 	flog.write( (char*)buffer(), (int)(ramend-buffer()) );
 	flog.close();
 

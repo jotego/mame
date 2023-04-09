@@ -138,6 +138,7 @@ void segapcm_device::sound_stream_update_legacy(sound_stream &stream, stream_sam
 			}
 
 			/* store back the updated address */
+			// regs[0x87] = addr;
 			regs[0x84] = addr >> 8;
 			regs[0x85] = addr >> 16;
 			m_low[ch] = regs[0x86] & 1 ? 0 : addr;
