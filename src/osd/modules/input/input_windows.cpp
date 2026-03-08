@@ -123,13 +123,18 @@ void windows_osd_interface::customize_input_type_list(std::vector<input_type_ent
 				break;
 
 			// add a NOT-lalt to our default shift-F12
-			case IPT_UI_RECORD_MNG: // emu/input.c: input_seq(KEYCODE_F12, KEYCODE_LSHIFT, input_seq::not_code, KEYCODE_LCONTROL)
+			case IPT_UI_DUMP_TILEMAP: // emu/input.c: input_seq(KEYCODE_F12, KEYCODE_LSHIFT, input_seq::not_code, KEYCODE_LCONTROL)
 				entry.defseq(SEQ_TYPE_STANDARD).set(KEYCODE_F12, KEYCODE_LSHIFT, input_seq::not_code, KEYCODE_LCONTROL, input_seq::not_code, KEYCODE_LALT);
 				break;
 
 			// add a NOT-lalt to our default shift-ctrl-F12
-			case IPT_UI_RECORD_AVI: // emu/input.c: input_seq(KEYCODE_F12, KEYCODE_LSHIFT, KEYCODE_LCONTROL)
+			case IPT_UI_RECORD_MNG: // emu/input.c: input_seq(KEYCODE_F12, KEYCODE_LSHIFT, KEYCODE_LCONTROL, input_seq::not_code, KEYCODE_LALT)
 				entry.defseq(SEQ_TYPE_STANDARD).set(KEYCODE_F12, KEYCODE_LSHIFT, KEYCODE_LCONTROL, input_seq::not_code, KEYCODE_LALT);
+				break;
+
+			// use lshift-lctrl-lalt-F12 for AVI recording to avoid clashing with tilemap dump
+			case IPT_UI_RECORD_AVI: // emu/input.c: input_seq(KEYCODE_F12, KEYCODE_LSHIFT, KEYCODE_LCONTROL, KEYCODE_LALT)
+				entry.defseq(SEQ_TYPE_STANDARD).set(KEYCODE_F12, KEYCODE_LSHIFT, KEYCODE_LCONTROL, KEYCODE_LALT);
 				break;
 
 			// lalt-F10 to toggle post-processing

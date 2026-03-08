@@ -45,6 +45,7 @@
 #define OPTION_INPUT_DIRECTORY      "input_directory"
 #define OPTION_STATE_DIRECTORY      "state_directory"
 #define OPTION_SNAPSHOT_DIRECTORY   "snapshot_directory"
+#define OPTION_TILEMAP_DIRECTORY    "tilemap_directory"
 #define OPTION_DIFF_DIRECTORY       "diff_directory"
 #define OPTION_COMMENT_DIRECTORY    "comment_directory"
 #define OPTION_SHARE_DIRECTORY      "share_directory"
@@ -330,6 +331,7 @@ public:
 	const char *input_directory() const { return value(OPTION_INPUT_DIRECTORY); }
 	const char *state_directory() const { return value(OPTION_STATE_DIRECTORY); }
 	const char *snapshot_directory() const { return value(OPTION_SNAPSHOT_DIRECTORY); }
+	const char *tilemap_directory() const { return value(OPTION_TILEMAP_DIRECTORY); }
 	const char *diff_directory() const { return value(OPTION_DIFF_DIRECTORY); }
 	const char *comment_directory() const { return value(OPTION_COMMENT_DIRECTORY); }
 	const char *share_directory() const { return value(OPTION_SHARE_DIRECTORY); }

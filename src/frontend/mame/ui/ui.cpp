@@ -42,6 +42,7 @@
 #include "romload.h"
 #include "screen.h"
 #include "speaker.h"
+#include "tilemap.h"
 #include "uiinput.h"
 
 // FIXME: allow OSD module headers to be included in a less ugly way
@@ -1533,6 +1534,90 @@ void mame_ui_manager::image_handler_ingame()
 	}
 }
 
+
+//-------------------------------------------------
+//  dump_tilemaps - dump all tilemaps and palette
+//  entries to a JSON file
+//-------------------------------------------------
+
+void mame_ui_manager::dump_tilemaps()
+{
+	int const tilemap_count = machine().tilemap().count();
+	if (tilemap_count <= 0)
+	{
+		popup_time(2, _("No tilemaps available to dump"));
+		return;
+	}
+
+	std::string const game(machine().basename());
+	std::string dumpname;
+	emu_file file(
+			machine().options().tilemap_directory(),
+			OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS);
+	std::error_condition filerr;
+	for (unsigned index = 0; ; ++index)
+	{
+		dumpname = string_format("%s%c%s-%02u.json", game, PATH_SEPARATOR, "tilemap", index);
+		filerr = file.open(dumpname);
+		if (!filerr)
+			break;
+		if (filerr != std::errc::file_exists)
+		{
+			popup_time(5, _("Failed to open tilemap dump file: %s"), filerr.message());
+			return;
+		}
+	}
+
+	file.puts("{\n");
+	for (int map_index = 0; map_index < tilemap_count; ++map_index)
+	{
+		tilemap_t &tilemap = *machine().tilemap().find(map_index);
+		file.puts(string_format("\t\"tilemap%d\": [", map_index + 1));
+
+		bool first = true;
+		for (u32 row = 0; row < tilemap.rows(); ++row)
+		{
+			for (u32 col = 0; col < tilemap.cols(); ++col)
+			{
+				u8 gfxnum;
+				u32 code;
+				u32 attr;
+				tilemap.get_info_debug(col, row, gfxnum, code, attr);
+				(void)gfxnum;
+				if (!first)
+					file.puts(", ");
+				file.puts(string_format("\"0x%X\", \"0x%X\"", code, attr));
+				first = false;
+			}
+		}
+
+	file.puts("],\n");
+	}
+
+	file.puts("\t\"palette\": [");
+	bool first_palette = true;
+	screen_device_enumerator const screens(machine().root_device());
+	auto const screen = screens.begin();
+	if (screen != screens.end())
+	{
+		if (screen->has_palette())
+		{
+			device_palette_interface &palette = screen->palette();
+			for (u32 index = 0; index < palette.entries(); ++index)
+			{
+				rgb_t const color = palette.pen_color(index);
+				if (!first_palette)
+					file.puts(", ");
+				file.puts(string_format("\"0x%02X%02X%02X\"", color.r(), color.g(), color.b()));
+				first_palette = false;
+			}
+		}
+	}
+	file.puts("]\n}\n");
+
+	popup_time(3, _("Dumped tilemaps: %s"), dumpname);
+}
+
 //-------------------------------------------------
 //  handler_ingame - in-game handler takes care
 //  of the standard keypresses
@@ -1716,6 +1801,10 @@ uint32_t mame_ui_manager::handler_ingame(render_container &container)
 	// handle a save snapshot request
 	if (machine().ui_input().pressed(IPT_UI_SNAPSHOT))
 		machine().video().save_active_screen_snapshots();
+
+	// handle a tilemap dump request
+	if (machine().ui_input().pressed(IPT_UI_DUMP_TILEMAP))
+		dump_tilemaps();
 
 	// toggle pause
 	if (machine().ui_input().pressed(IPT_UI_PAUSE))

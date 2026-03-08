@@ -338,6 +338,7 @@ private:
 	void set_handler(ui_callback_type callback_type, handler_callback_func &&callback);
 	void frame_update();
 	void exit();
+	void dump_tilemaps();
 	void increase_frameskip();
 	void decrease_frameskip();
 	void config_load_warnings(config_type cfg_type, config_level cfg_level, util::xml::data_node const *parentnode);

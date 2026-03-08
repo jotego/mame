@@ -898,8 +898,9 @@ namespace {
 		INPUT_PORT_DIGITAL_TYPE( 0, UI,       UI_FAST_FORWARD,      N_p("input-name", "Fast Forward"),           input_seq(KEYCODE_INSERT) ) \
 		INPUT_PORT_DIGITAL_TYPE( 0, UI,       UI_SHOW_FPS,          N_p("input-name", "Show FPS"),               input_seq(KEYCODE_F11, input_seq::not_code, KEYCODE_LSHIFT) ) \
 		INPUT_PORT_DIGITAL_TYPE( 0, UI,       UI_SNAPSHOT,          N_p("input-name", "Save Snapshot"),          input_seq(KEYCODE_F12, input_seq::not_code, KEYCODE_LSHIFT) ) \
-		INPUT_PORT_DIGITAL_TYPE( 0, UI,       UI_RECORD_MNG,        N_p("input-name", "Record MNG"),             input_seq(KEYCODE_F12, KEYCODE_LSHIFT, input_seq::not_code, KEYCODE_LCONTROL) ) \
-		INPUT_PORT_DIGITAL_TYPE( 0, UI,       UI_RECORD_AVI,        N_p("input-name", "Record AVI"),             input_seq(KEYCODE_F12, KEYCODE_LSHIFT, KEYCODE_LCONTROL) ) \
+		INPUT_PORT_DIGITAL_TYPE( 0, UI,       UI_DUMP_TILEMAP,      N_p("input-name", "Dump Tilemaps"),          input_seq(KEYCODE_F12, KEYCODE_LSHIFT, input_seq::not_code, KEYCODE_LCONTROL) ) \
+		INPUT_PORT_DIGITAL_TYPE( 0, UI,       UI_RECORD_MNG,        N_p("input-name", "Record MNG"),             input_seq(KEYCODE_F12, KEYCODE_LSHIFT, KEYCODE_LCONTROL, input_seq::not_code, KEYCODE_LALT) ) \
+		INPUT_PORT_DIGITAL_TYPE( 0, UI,       UI_RECORD_AVI,        N_p("input-name", "Record AVI"),             input_seq(KEYCODE_F12, KEYCODE_LSHIFT, KEYCODE_LCONTROL, KEYCODE_LALT) ) \
 		INPUT_PORT_DIGITAL_TYPE( 0, UI,       UI_TOGGLE_CHEAT,      N_p("input-name", "Toggle Cheat"),           input_seq(KEYCODE_F8, KEYCODE_LSHIFT, input_seq::or_code, KEYCODE_F8, KEYCODE_RSHIFT) ) \
 		INPUT_PORT_DIGITAL_TYPE( 0, UI,       UI_DISPLAY_COMMENT,   N_p("input-name", "UI Display Comment"),     input_seq(KEYCODE_SPACE) ) \
 		INPUT_PORT_DIGITAL_TYPE( 0, UI,       UI_ZOOM_IN,           N_p("input-name", "UI Zoom In"),             input_seq(KEYCODE_EQUALS) ) \
