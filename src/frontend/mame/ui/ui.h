@@ -32,6 +32,7 @@
 #include <set>
 #include <string>
 #include <string_view>
+#include <system_error>
 #include <typeindex>
 #include <typeinfo>
 #include <unordered_map>
@@ -338,6 +339,9 @@ private:
 	void set_handler(ui_callback_type callback_type, handler_callback_func &&callback);
 	void frame_update();
 	void exit();
+	std::error_condition open_tilemap_dump_file(emu_file &file, std::string &dumpname);
+	void dump_tilemap_data(emu_file &file, int tilemap_count);
+	void dump_palette_data(emu_file &file);
 	void dump_tilemaps();
 	void increase_frameskip();
 	void decrease_frameskip();

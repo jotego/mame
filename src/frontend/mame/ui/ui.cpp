@@ -1549,52 +1549,98 @@ void mame_ui_manager::dump_tilemaps()
 		return;
 	}
 
-	std::string const game(machine().basename());
 	std::string dumpname;
 	emu_file file(
 			machine().options().tilemap_directory(),
 			OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS);
-	std::error_condition filerr;
-	for (unsigned index = 0; ; ++index)
+	std::error_condition const filerr = open_tilemap_dump_file(file, dumpname);
+	if (filerr)
 	{
-		dumpname = string_format("%s%c%s-%02u.json", game, PATH_SEPARATOR, "tilemap", index);
-		filerr = file.open(dumpname);
-		if (!filerr)
-			break;
-		if (filerr != std::errc::file_exists)
-		{
-			popup_time(5, _("Failed to open tilemap dump file: %s"), filerr.message());
-			return;
-		}
+		popup_time(5, _("Failed to open tilemap dump file: %s"), filerr.message());
+		return;
 	}
 
 	file.puts("{\n");
+	dump_tilemap_data(file, tilemap_count);
+
+	file.puts("\t\"palette\": [");
+	dump_palette_data(file);
+	file.puts("]\n}\n");
+
+	popup_time(3, _("Dumped tilemaps: %s"), dumpname);
+}
+
+
+//-------------------------------------------------
+//  open_tilemap_dump_file - find next available
+//  dump file and open it
+//-------------------------------------------------
+
+std::error_condition mame_ui_manager::open_tilemap_dump_file(emu_file &file, std::string &dumpname)
+{
+	std::string const game(machine().basename());
+	for (unsigned index = 0; ; ++index)
+	{
+		dumpname = string_format("%s%c%s-%02u.json", game, PATH_SEPARATOR, "tilemap", index);
+		std::error_condition const filerr = file.open(dumpname);
+		if (!filerr || (filerr != std::errc::file_exists))
+			return filerr;
+	}
+}
+
+
+//-------------------------------------------------
+//  dump_tilemap_data - dump all tilemap entries
+//-------------------------------------------------
+
+void mame_ui_manager::dump_tilemap_data(emu_file &file, int tilemap_count)
+{
 	for (int map_index = 0; map_index < tilemap_count; ++map_index)
 	{
-		tilemap_t &tilemap = *machine().tilemap().find(map_index);
+		tilemap_t *const tilemap = machine().tilemap().find(map_index);
+		if (!tilemap)
+			continue;
+
 		file.puts(string_format("\t\"tilemap%d\": [", map_index + 1));
 
 		bool first = true;
-		for (u32 row = 0; row < tilemap.rows(); ++row)
+		for (u32 row = 0; row < tilemap->rows(); ++row)
 		{
-			for (u32 col = 0; col < tilemap.cols(); ++col)
+			for (u32 col = 0; col < tilemap->cols(); ++col)
 			{
 				u8 gfxnum;
 				u32 code;
 				u32 attr;
-				tilemap.get_info_debug(col, row, gfxnum, code, attr);
+				tilemap->get_info_debug(col, row, gfxnum, code, attr);
 				(void)gfxnum;
 				if (!first)
+				{
 					file.puts(", ");
-				file.puts(string_format("\"0x%X\", \"0x%X\"", code, attr));
+					if (!col)
+						file.puts("\n\t\t");
+				}
+				else
+				{
+					file.puts("\n\t\t");
+				}
+				file.puts(string_format("\"0x%02X\", \"0x%02X\"", code, attr));
 				first = false;
 			}
 		}
 
-	file.puts("],\n");
+		if (!first)
+			file.puts("\n\t");
+		file.puts("],\n");
 	}
+}
 
-	file.puts("\t\"palette\": [");
+
+//-------------------------------------------------
+//  dump_palette_data - dump palette entries
+//-------------------------------------------------
+
+void mame_ui_manager::dump_palette_data(emu_file &file)
+{
 	bool first_palette = true;
 	screen_device_enumerator const screens(machine().root_device());
 	auto const screen = screens.begin();
@@ -1613,10 +1659,8 @@ void mame_ui_manager::dump_tilemaps()
 			}
 		}
 	}
-	file.puts("]\n}\n");
-
-	popup_time(3, _("Dumped tilemaps: %s"), dumpname);
 }
+
 
 //-------------------------------------------------
 //  handler_ingame - in-game handler takes care
