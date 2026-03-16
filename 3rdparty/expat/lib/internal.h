@@ -122,7 +122,10 @@
 #  endif
 #else
 #  define EXPAT_FMT_ULL(midpart) "%" midpart "llu"
-#  if ! defined(ULONG_MAX)
+#  if defined(_WIN64)
+#    define EXPAT_FMT_PTRDIFF_T(midpart) "%" midpart "lld"
+#    define EXPAT_FMT_SIZE_T(midpart) "%" midpart "llu"
+#  elif ! defined(ULONG_MAX)
 #    error Compiler did not define ULONG_MAX for us
 #  elif ULONG_MAX == 18446744073709551615u // 2^64-1
 #    define EXPAT_FMT_PTRDIFF_T(midpart) "%" midpart "ld"

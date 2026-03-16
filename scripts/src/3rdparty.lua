@@ -1005,17 +1005,21 @@ elseif _OPTIONS["vs"]=="intel-15" then
 		}
 end
 
-	configuration { }
-		defines {
-			"LUA_COMPAT_ALL",
-			"LUA_COMPAT_5_1",
-			"LUA_COMPAT_5_2",
-		}
-	if (_OPTIONS["targetos"] ~= "windows") and (_OPTIONS["targetos"] ~= "asmjs") then
-		defines {
-			"LUA_USE_POSIX",
-		}
-	end
+		configuration { }
+			defines {
+				"LUA_COMPAT_ALL",
+				"LUA_COMPAT_5_1",
+				"LUA_COMPAT_5_2",
+			}
+		local lua_mingw_cross
+			= (_OPTIONS["gcc"] == "mingw32-gcc")
+			or (_OPTIONS["gcc"] == "mingw64-gcc")
+			or (_OPTIONS["gcc"] == "mingw-clang")
+		if (_OPTIONS["targetos"] ~= "windows") and (_OPTIONS["targetos"] ~= "asmjs") and (not lua_mingw_cross) then
+			defines {
+				"LUA_USE_POSIX",
+			}
+		end
 
 	configuration { }
 

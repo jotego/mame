@@ -355,6 +355,12 @@ else # TARGETOS
 CROSS_BUILD := 1
 endif # TARGETOS
 
+# The windows_* goals are always Windows targets, even when run from non-Windows hosts.
+ifneq ($(filter windows windows_x86 windows_x64 windows_x86_clang windows_x64_clang,$(MAKECMDGOALS)),)
+TARGETOS := windows
+CROSS_BUILD := 1
+endif
+
 ifdef PTR64
 ifeq ($(PTR64),1)
 ARCHITECTURE := _x64
