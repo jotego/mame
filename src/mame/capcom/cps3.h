@@ -185,12 +185,14 @@ private:
 	u32 ProcessByte8(u8 b,u32 dst_offset);
 	void do_alt_char_dma( u32 src, u32 real_dest, u32 real_length );
 	void process_character_dma(u32 address);
+	void dump_video_state();
 	inline void cps3_drawgfxzoom(bitmap_rgb32 &dest_bmp, const rectangle &clip, gfx_element *gfx,
 		u32 code, u32 color, int flipx, int flipy, int sx, int sy,
 		int transparency, int transparent_color,
 		int scalex, int scaley);
 	void cps3_map(address_map &map) ATTR_COLD;
 	void decrypted_opcodes_map(address_map &map) ATTR_COLD;
+	bool m_dump_video_key_pressed = false;
 };
 
 #endif // MAME_CAPCOM_CPS3_H

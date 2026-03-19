@@ -583,6 +583,8 @@ Hardware registers info
 
 #include "emu.h"
 #include "cdrom.h"
+#include "emuopts.h"
+#include "fileio.h"
 #include "machine/nvram.h"
 #include "cps3.h"
 #include "bus/nscsi/cd.h"
@@ -1090,6 +1092,11 @@ void cps3_state::draw_fg_layer(screen_device &screen, bitmap_rgb32 &bitmap, cons
 
 u32 cps3_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
+	bool const dump_video_pressed = !(ioport("EXTRA")->read() & 0x00400000);
+	if (dump_video_pressed && !m_dump_video_key_pressed)
+		dump_video_state();
+	m_dump_video_key_pressed = dump_video_pressed;
+
 	int width = ((m_ppu_crtc_zoom[1] & 0xffff0000) >> 16) - (m_ppu_crtc_zoom[0] & 0xffff);
 	if (width > 0 && m_screenwidth != width)
 	{
@@ -1312,6 +1319,63 @@ u32 cps3_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const
 	draw_fg_layer(screen, bitmap, cliprect);
 
 	return 0;
+}
+
+void cps3_state::dump_video_state()
+{
+	std::string const game(machine().basename());
+	std::string const base_dir(machine().options().snapshot_directory());
+	std::string base_name;
+	emu_file probe(base_dir, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS);
+	for (unsigned index = 0; ; ++index)
+	{
+		base_name = string_format("%s%cvideo-%02u", game, PATH_SEPARATOR, index);
+		std::error_condition const filerr = probe.open(base_name + "-spriteram.bin");
+		if (!filerr)
+			break;
+		if (filerr != std::errc::file_exists)
+		{
+			popmessage("CPS3 dump failed: %s", filerr.message());
+			return;
+		}
+	}
+
+	auto const dump_blob = [this, &base_dir, &base_name] (char const *suffix, void const *data, u32 bytes) -> bool
+	{
+		emu_file file(base_dir, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS);
+		std::error_condition const filerr = file.open(base_name + suffix);
+		if (filerr)
+		{
+			popmessage("CPS3 dump failed: %s", filerr.message());
+			return false;
+		}
+		if (file.write(data, bytes) != bytes)
+		{
+			popmessage("CPS3 dump failed: short write");
+			return false;
+		}
+		return true;
+	};
+
+	if (!dump_blob("-spriteram.bin", m_spriteram, m_spriteram.bytes()))
+		return;
+	if (!dump_blob("-colourram.bin", m_colourram, m_colourram.bytes()))
+		return;
+	if (!dump_blob("-charram.bin", m_char_ram.get(), 0x800000))
+		return;
+	if (!dump_blob("-ssram.bin", m_ss_ram.get(), 0x8000))
+		return;
+
+	if (!dump_blob("-ppu_gscroll.bin", m_ppu_gscroll, m_ppu_gscroll.bytes()))
+		return;
+	if (!dump_blob("-ppu_tilemap_regs.bin", m_tilemap_regs, m_tilemap_regs.bytes()))
+		return;
+	if (!dump_blob("-ppu_crtc_zoom.bin", m_ppu_crtc_zoom, m_ppu_crtc_zoom.bytes()))
+		return;
+	if (!dump_blob("-ppu_gscroll_latched.bin", m_ppu_gscroll_buff, sizeof(m_ppu_gscroll_buff)))
+		return;
+
+	popmessage("CPS3 video dump: %s", base_name);
 }
 
 /*
@@ -2210,7 +2274,8 @@ static INPUT_PORTS_START( cps3 )
 	PORT_BIT( 0x00080000, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_NAME("P1 Short Kick") PORT_PLAYER(1)
 	PORT_BIT( 0x00100000, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_NAME("P2 Short Kick") PORT_PLAYER(2)
 	PORT_BIT( 0x00200000, IP_ACTIVE_LOW, IPT_BUTTON5 ) PORT_NAME("P2 Forward Kick") PORT_PLAYER(2)
-	PORT_BIT( 0xffc00000, IP_ACTIVE_LOW, IPT_UNUSED ) // nothing here?
+	PORT_BIT( 0x00400000, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("Dump CPS3 Video State") PORT_CODE(KEYCODE_F10)
+	PORT_BIT( 0xff800000, IP_ACTIVE_LOW, IPT_UNUSED ) // nothing here?
 INPUT_PORTS_END
 
 /* Red Earth game inputs */
@@ -2285,6 +2350,7 @@ void cps3_state::machine_start()
 	save_item(NAME(m_ss_vscroll));
 	save_item(NAME(m_ss_pal_base));
 	save_item(NAME(m_spritelist_dma));
+	save_item(NAME(m_dump_video_key_pressed));
 
 	save_pointer(NAME(m_eeprom), 0x80/4);
 }
@@ -2295,6 +2361,7 @@ void cps3_state::machine_reset()
 	m_current_table_address = -1;
 	m_dma_status = 0;
 	m_spritelist_dma = 0;
+	m_dump_video_key_pressed = false;
 
 	// copy data from flashroms back into user regions + decrypt into regions we execute/draw from.
 	copy_from_nvram();
