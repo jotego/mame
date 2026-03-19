@@ -17,6 +17,9 @@
 #include "machine/timer.h"
 #include "emupal.h"
 
+class cps3_tile_cache_stats;
+class cps3_frame_code_stats;
+class cps3_report_averager;
 
 class cps3_state : public driver_device
 {
@@ -45,10 +48,15 @@ public:
 		, m_sh2cache_ram(*this, "sh2cache_ram")
 		, m_decrypted_gamerom(*this, "decrypted_gamerom")
 		, m_sh2cache_ram_decrypted(*this, "sh2cache_ram_decrypted")
+		, m_cache_blocks(*this, "CACHE_BLOCKS")
+		, m_cache_tiles(*this, "CACHE_TILES")
+		, m_sprite_cache_blocks(*this, "SPRITE_CACHE_BLOCKS")
+		, m_sprite_cache_tiles(*this, "SPRITE_CACHE_TILES")
 		, m_user4_region(*this, "user4")
 		, m_user5_region(*this, "user5")
 	{
 	}
+	virtual ~cps3_state();
 
 	void init_sfiii3();
 	void init_sfiii();
@@ -99,6 +107,10 @@ protected:
 	required_shared_ptr<u32> m_sh2cache_ram;
 	required_shared_ptr<u32> m_decrypted_gamerom;
 	required_shared_ptr<u32> m_sh2cache_ram_decrypted;
+	required_ioport m_cache_blocks;
+	required_ioport m_cache_tiles;
+	required_ioport m_sprite_cache_blocks;
+	required_ioport m_sprite_cache_tiles;
 
 	optional_memory_region      m_user4_region;
 	optional_memory_region      m_user5_region;
@@ -117,6 +129,10 @@ private:
 	std::unique_ptr<u32[]> m_mame_colours;
 	bitmap_rgb32 m_renderbuffer_bitmap;
 	rectangle m_renderbuffer_clip;
+	std::unique_ptr<cps3_tile_cache_stats> m_tilemap_cache_stats;
+	std::unique_ptr<cps3_tile_cache_stats> m_sprite_cache_stats;
+	std::unique_ptr<cps3_frame_code_stats> m_frame_code_stats;
+	std::unique_ptr<cps3_report_averager> m_report_averager;
 	u8* m_user4 = nullptr;
 	std::unique_ptr<u8[]> m_user4_allocated;
 	u32 m_key1 = 0;
