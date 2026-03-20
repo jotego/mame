@@ -18,7 +18,6 @@
 #include "emupal.h"
 
 class cps3_tile_cache_stats;
-class cps3_frame_code_stats;
 class cps3_report_averager;
 
 class cps3_state : public driver_device
@@ -50,8 +49,7 @@ public:
 		, m_sh2cache_ram_decrypted(*this, "sh2cache_ram_decrypted")
 		, m_cache_blocks(*this, "CACHE_BLOCKS")
 		, m_cache_tiles(*this, "CACHE_TILES")
-		, m_sprite_cache_blocks(*this, "SPRITE_CACHE_BLOCKS")
-		, m_sprite_cache_tiles(*this, "SPRITE_CACHE_TILES")
+		, m_cache_policy(*this, "CACHE_POLICY")
 		, m_user4_region(*this, "user4")
 		, m_user5_region(*this, "user5")
 	{
@@ -109,8 +107,7 @@ protected:
 	required_shared_ptr<u32> m_sh2cache_ram_decrypted;
 	required_ioport m_cache_blocks;
 	required_ioport m_cache_tiles;
-	required_ioport m_sprite_cache_blocks;
-	required_ioport m_sprite_cache_tiles;
+	required_ioport m_cache_policy;
 
 	optional_memory_region      m_user4_region;
 	optional_memory_region      m_user5_region;
@@ -130,8 +127,6 @@ private:
 	bitmap_rgb32 m_renderbuffer_bitmap;
 	rectangle m_renderbuffer_clip;
 	std::unique_ptr<cps3_tile_cache_stats> m_tilemap_cache_stats;
-	std::unique_ptr<cps3_tile_cache_stats> m_sprite_cache_stats;
-	std::unique_ptr<cps3_frame_code_stats> m_frame_code_stats;
 	std::unique_ptr<cps3_report_averager> m_report_averager;
 	u8* m_user4 = nullptr;
 	std::unique_ptr<u8[]> m_user4_allocated;

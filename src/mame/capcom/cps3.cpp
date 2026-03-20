@@ -599,15 +599,24 @@ Hardware registers info
 class cps3_tile_cache_stats
 {
 public:
-		static constexpr u32 MAX_BLOCK_COUNT = 64;
+	enum class replacement_policy : u8
+	{
+		RANDOM = 0,
+		LRU = 1
+	};
+
+	static constexpr u32 MAX_BLOCK_COUNT = 256;
 	static constexpr u32 MOVING_AVERAGE_FRAMES = 32;
 
 	void reset()
 	{
 		m_cached_tile_bases.fill(0);
 		m_block_valid.fill(false);
+		m_last_use.fill(0);
 		m_configured_block_count = 32;
 		m_configured_tiles_per_block = 4;
+		m_policy = replacement_policy::RANDOM;
+		m_access_sequence = 0;
 		m_average_index = 0;
 		m_average_count = 0;
 		m_average_total = 0;
@@ -621,31 +630,37 @@ public:
 		m_frame_sdram_requests = 0;
 	}
 
-	void configure(u32 block_count, u32 tiles_per_block)
+	void configure(u32 block_count, u32 tiles_per_block, replacement_policy policy)
 	{
-		if (m_configured_block_count == block_count && m_configured_tiles_per_block == tiles_per_block)
+		if (m_configured_block_count == block_count && m_configured_tiles_per_block == tiles_per_block && m_policy == policy)
 			return;
 
 		reset();
 		m_configured_block_count = block_count;
 		m_configured_tiles_per_block = tiles_per_block;
+		m_policy = policy;
 	}
 
 	void request_tile(u32 tile_code, u32 replacement_index)
 	{
 		m_frame_unique_tiles.insert(tile_code);
+		m_access_sequence++;
 
 		u32 const tile_base = tile_code & ~(m_configured_tiles_per_block - 1);
 		for (u32 index = 0; index < m_configured_block_count; index++)
 		{
 			if (m_block_valid[index] && m_cached_tile_bases[index] == tile_base)
+			{
+				m_last_use[index] = m_access_sequence;
 				return;
+			}
 		}
 
 		m_frame_sdram_requests++;
-		u32 const block = replacement_index % m_configured_block_count;
+		u32 const block = find_replacement_block(replacement_index);
 		m_cached_tile_bases[block] = tile_base;
 		m_block_valid[block] = true;
+		m_last_use[block] = m_access_sequence;
 	}
 
 	void end_frame()
@@ -689,38 +704,44 @@ public:
 	}
 
 private:
+	u32 find_replacement_block(u32 replacement_index) const
+	{
+		for (u32 index = 0; index < m_configured_block_count; index++)
+		{
+			if (!m_block_valid[index])
+				return index;
+		}
+
+		if (m_policy == replacement_policy::RANDOM)
+			return replacement_index % m_configured_block_count;
+
+		u32 oldest_index = 0;
+		u32 oldest_use = m_last_use[0];
+		for (u32 index = 1; index < m_configured_block_count; index++)
+		{
+			if (m_last_use[index] < oldest_use)
+			{
+				oldest_use = m_last_use[index];
+				oldest_index = index;
+			}
+		}
+
+		return oldest_index;
+	}
+
 	std::array<u32, MAX_BLOCK_COUNT> m_cached_tile_bases{};
 	std::array<bool, MAX_BLOCK_COUNT> m_block_valid{};
+	std::array<u32, MAX_BLOCK_COUNT> m_last_use{};
 	std::array<u32, MOVING_AVERAGE_FRAMES> m_recent_sdram_requests{};
 	std::unordered_set<u32> m_frame_unique_tiles;
 	u32 m_frame_sdram_requests = 0;
 	u32 m_configured_block_count = 32;
 	u32 m_configured_tiles_per_block = 4;
+	replacement_policy m_policy = replacement_policy::RANDOM;
+	u32 m_access_sequence = 0;
 	u32 m_average_index = 0;
 	u32 m_average_count = 0;
 	u32 m_average_total = 0;
-};
-
-class cps3_frame_code_stats
-{
-public:
-	void begin_frame()
-	{
-		m_frame_unique_codes.clear();
-	}
-
-	void note_code(u32 code)
-	{
-		m_frame_unique_codes.insert(code);
-	}
-
-	u32 unique_code_count() const
-	{
-		return m_frame_unique_codes.size();
-	}
-
-private:
-	std::unordered_set<u32> m_frame_unique_codes;
 };
 
 class cps3_report_averager
@@ -731,28 +752,18 @@ public:
 	struct report
 	{
 		u32 unique_codes = 0;
-		u32 tile_requests = 0;
-		u32 sprite_requests = 0;
-		u32 total_requests = 0;
-		u32 tile_cache_kb = 0;
-		u32 sprite_cache_kb = 0;
-		u32 tile_usage_pct = 0;
-		u32 sprite_usage_pct = 0;
-		u32 total_usage_pct = 0;
+		u32 sdram_requests = 0;
+		u32 cache_kb = 0;
+		u32 usage_pct = 0;
 	};
 
 	void reset()
 	{
 		m_frame_count = 0;
 		m_unique_codes_total = 0;
-		m_tile_requests_total = 0;
-		m_sprite_requests_total = 0;
-		m_total_requests_total = 0;
-		m_tile_cache_kb_total = 0;
-		m_sprite_cache_kb_total = 0;
-		m_tile_usage_pct_total = 0;
-		m_sprite_usage_pct_total = 0;
-		m_total_usage_pct_total = 0;
+		m_sdram_requests_total = 0;
+		m_cache_kb_total = 0;
+		m_usage_pct_total = 0;
 		m_last_report = {};
 	}
 
@@ -760,37 +771,22 @@ public:
 	{
 		m_frame_count++;
 		m_unique_codes_total += frame.unique_codes;
-		m_tile_requests_total += frame.tile_requests;
-		m_sprite_requests_total += frame.sprite_requests;
-		m_total_requests_total += frame.total_requests;
-		m_tile_cache_kb_total += frame.tile_cache_kb;
-		m_sprite_cache_kb_total += frame.sprite_cache_kb;
-		m_tile_usage_pct_total += frame.tile_usage_pct;
-		m_sprite_usage_pct_total += frame.sprite_usage_pct;
-		m_total_usage_pct_total += frame.total_usage_pct;
+		m_sdram_requests_total += frame.sdram_requests;
+		m_cache_kb_total += frame.cache_kb;
+		m_usage_pct_total += frame.usage_pct;
 
 		m_last_report.unique_codes = round_div(m_unique_codes_total, m_frame_count);
-		m_last_report.tile_requests = round_div(m_tile_requests_total, m_frame_count);
-		m_last_report.sprite_requests = round_div(m_sprite_requests_total, m_frame_count);
-		m_last_report.total_requests = round_div(m_total_requests_total, m_frame_count);
-		m_last_report.tile_cache_kb = round_div(m_tile_cache_kb_total, m_frame_count);
-		m_last_report.sprite_cache_kb = round_div(m_sprite_cache_kb_total, m_frame_count);
-		m_last_report.tile_usage_pct = round_div(m_tile_usage_pct_total, m_frame_count);
-		m_last_report.sprite_usage_pct = round_div(m_sprite_usage_pct_total, m_frame_count);
-		m_last_report.total_usage_pct = round_div(m_total_usage_pct_total, m_frame_count);
+		m_last_report.sdram_requests = round_div(m_sdram_requests_total, m_frame_count);
+		m_last_report.cache_kb = round_div(m_cache_kb_total, m_frame_count);
+		m_last_report.usage_pct = round_div(m_usage_pct_total, m_frame_count);
 
 		if (m_frame_count >= REPORT_FRAMES)
 		{
 			m_frame_count = 0;
 			m_unique_codes_total = 0;
-			m_tile_requests_total = 0;
-			m_sprite_requests_total = 0;
-			m_total_requests_total = 0;
-			m_tile_cache_kb_total = 0;
-			m_sprite_cache_kb_total = 0;
-			m_tile_usage_pct_total = 0;
-			m_sprite_usage_pct_total = 0;
-			m_total_usage_pct_total = 0;
+			m_sdram_requests_total = 0;
+			m_cache_kb_total = 0;
+			m_usage_pct_total = 0;
 		}
 	}
 
@@ -807,14 +803,9 @@ private:
 
 	u32 m_frame_count = 0;
 	u64 m_unique_codes_total = 0;
-	u64 m_tile_requests_total = 0;
-	u64 m_sprite_requests_total = 0;
-	u64 m_total_requests_total = 0;
-	u64 m_tile_cache_kb_total = 0;
-	u64 m_sprite_cache_kb_total = 0;
-	u64 m_tile_usage_pct_total = 0;
-	u64 m_sprite_usage_pct_total = 0;
-	u64 m_total_usage_pct_total = 0;
+	u64 m_sdram_requests_total = 0;
+	u64 m_cache_kb_total = 0;
+	u64 m_usage_pct_total = 0;
 	report m_last_report;
 };
 
@@ -1204,12 +1195,8 @@ void cps3_state::video_start()
 	m_ss_ram = make_unique_clear<u8[]>(0x8000);
 	m_spritelist = make_unique_clear<u32[]>(0x80000/4);
 	m_tilemap_cache_stats = std::make_unique<cps3_tile_cache_stats>();
-	m_sprite_cache_stats = std::make_unique<cps3_tile_cache_stats>();
-	m_frame_code_stats = std::make_unique<cps3_frame_code_stats>();
 	m_report_averager = std::make_unique<cps3_report_averager>();
 	m_tilemap_cache_stats->reset();
-	m_sprite_cache_stats->reset();
-	m_frame_code_stats->begin_frame();
 	m_report_averager->reset();
 
 	m_spritelist[0] = 0x80000000;
@@ -1283,7 +1270,6 @@ void cps3_state::draw_tilemapsprite_line(u32 *regs, int drawline, bitmap_rgb32 &
 			m_gfxdecode->gfx(1)->set_granularity(bpp ? 64 : 256);
 
 			xflip ^= xflip_mask & 1;
-			m_frame_code_stats->note_code(tileno);
 			m_tilemap_cache_stats->request_tile(tileno, machine().rand());
 
 		cps3_drawgfxzoom(bitmap, clip, m_gfxdecode->gfx(1), tileno, colour, xflip, yflip, (x * 16) - scrollx % 16, drawline - tilesubline, trans, 0, 0x10000, 0x10000);
@@ -1327,18 +1313,13 @@ u32 cps3_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const
 {
 	static constexpr u64 FPGA_CLOCK = 85909000;
 	static constexpr u64 FRAME_RATE_X100 = 5959;
-	u32 const cache_blocks = (m_cache_blocks->read() == 0x03) ? 64 : ((m_cache_blocks->read() == 0x02) ? 32 : ((m_cache_blocks->read() == 0x01) ? 16 : 8));
+	u32 const cache_blocks = (m_cache_blocks->read() == 0x05) ? 256 : ((m_cache_blocks->read() == 0x04) ? 128 : ((m_cache_blocks->read() == 0x03) ? 64 : ((m_cache_blocks->read() == 0x02) ? 32 : ((m_cache_blocks->read() == 0x01) ? 16 : 8))));
 	u32 const cache_tiles = (m_cache_tiles->read() == 0x03) ? 32 : ((m_cache_tiles->read() == 0x02) ? 16 : ((m_cache_tiles->read() == 0x01) ? 8 : 4));
-	u32 const sprite_cache_blocks = (m_sprite_cache_blocks->read() == 0x03) ? 64 : ((m_sprite_cache_blocks->read() == 0x02) ? 32 : ((m_sprite_cache_blocks->read() == 0x01) ? 16 : 8));
-	u32 const sprite_cache_tiles = (m_sprite_cache_tiles->read() == 0x03) ? 32 : ((m_sprite_cache_tiles->read() == 0x02) ? 16 : ((m_sprite_cache_tiles->read() == 0x01) ? 8 : 4));
+	cps3_tile_cache_stats::replacement_policy const cache_policy = (m_cache_policy->read() & 0x01) ? cps3_tile_cache_stats::replacement_policy::LRU : cps3_tile_cache_stats::replacement_policy::RANDOM;
 	u32 const cache_size_kb = (cache_blocks * cache_tiles) / 4;
-	u32 const sprite_cache_size_kb = (sprite_cache_blocks * sprite_cache_tiles) / 4;
 
-	m_tilemap_cache_stats->configure(cache_blocks, cache_tiles);
-	m_sprite_cache_stats->configure(sprite_cache_blocks, sprite_cache_tiles);
+	m_tilemap_cache_stats->configure(cache_blocks, cache_tiles, cache_policy);
 	m_tilemap_cache_stats->begin_frame();
-	m_sprite_cache_stats->begin_frame();
-	m_frame_code_stats->begin_frame();
 
 	int width = ((m_ppu_crtc_zoom[1] & 0xffff0000) >> 16) - (m_ppu_crtc_zoom[0] & 0xffff);
 	if (width > 0 && m_screenwidth != width)
@@ -1517,8 +1498,7 @@ u32 cps3_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const
 						if (current_ypos & 0x200) current_ypos -= 0x400;
 
 						//if ( (whichbpp) && (m_screen->frame_number() & 1)) continue;
-						m_frame_code_stats->note_code(tileno + count);
-						m_sprite_cache_stats->request_tile(tileno + count, machine().rand());
+						m_tilemap_cache_stats->request_tile(tileno + count, machine().rand());
 
 						cps3_drawgfxzoom(m_renderbuffer_bitmap, m_renderbuffer_clip, m_gfxdecode->gfx(1), tileno + count, actualpal, 0 ^ flipx, 0 ^ flipy, current_xpos, current_ypos, trans, 0, xscale, yscale);
 						count++;
@@ -1563,43 +1543,26 @@ u32 cps3_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const
 
 	draw_fg_layer(screen, bitmap, cliprect);
 	m_tilemap_cache_stats->end_frame();
-	m_sprite_cache_stats->end_frame();
-	u32 const tile_sdram_requests = m_tilemap_cache_stats->sdram_request_count();
-	u32 const sprite_sdram_requests = m_sprite_cache_stats->sdram_request_count();
-	u32 const total_sdram_requests = tile_sdram_requests + sprite_sdram_requests;
-	u64 const tile_sdram_usage_num = u64(tile_sdram_requests) * u64(m_tilemap_cache_stats->tiles_per_block()) * 256U * FRAME_RATE_X100;
-	u64 const sprite_sdram_usage_num = u64(sprite_sdram_requests) * u64(m_sprite_cache_stats->tiles_per_block()) * 256U * FRAME_RATE_X100;
-	u32 const tile_sdram_usage_pct = (tile_sdram_usage_num + (FPGA_CLOCK / 2)) / FPGA_CLOCK;
-	u32 const sprite_sdram_usage_pct = (sprite_sdram_usage_num + (FPGA_CLOCK / 2)) / FPGA_CLOCK;
-	u32 const total_sdram_usage_pct = tile_sdram_usage_pct + sprite_sdram_usage_pct;
+	u32 const sdram_requests = m_tilemap_cache_stats->sdram_request_count();
+	u64 const sdram_usage_num = u64(sdram_requests) * u64(m_tilemap_cache_stats->tiles_per_block()) * 256U * FRAME_RATE_X100;
+	u32 const sdram_usage_pct = (sdram_usage_num + (FPGA_CLOCK / 2)) / FPGA_CLOCK;
 	cps3_report_averager::report const frame_report{
-		m_frame_code_stats->unique_code_count(),
-		tile_sdram_requests,
-		sprite_sdram_requests,
-		total_sdram_requests,
+		m_tilemap_cache_stats->unique_tile_count(),
+		sdram_requests,
 		cache_size_kb,
-		sprite_cache_size_kb,
-		tile_sdram_usage_pct,
-		sprite_sdram_usage_pct,
-		total_sdram_usage_pct
+		sdram_usage_pct
 	};
 	m_report_averager->add_frame(frame_report);
 	cps3_report_averager::report const &report = m_report_averager->last_report();
 	machine().popmessage(
-			"Tile cache: %u x %u (%u kB) | Sprite cache: %u x %u (%u kB)\nUnique codes: %u | SDRAM req: %u + %u = %u\nSDRAM usage: %02u%% + %02u%% = %u%%",
+			"Cache: %u x %u (%u kB) | Policy: %s\nUnique codes: %u | SDRAM req: %u\nSDRAM usage: %02u%%",
 			m_tilemap_cache_stats->block_count(),
 			m_tilemap_cache_stats->tiles_per_block(),
-			report.tile_cache_kb,
-			m_sprite_cache_stats->block_count(),
-			m_sprite_cache_stats->tiles_per_block(),
-			report.sprite_cache_kb,
+			report.cache_kb,
+			(cache_policy == cps3_tile_cache_stats::replacement_policy::LRU) ? "LRU" : "Random",
 			report.unique_codes,
-			report.tile_requests,
-			report.sprite_requests,
-			report.total_requests,
-			report.tile_usage_pct,
-			report.sprite_usage_pct,
-			report.total_usage_pct);
+			report.sdram_requests,
+			report.usage_pct);
 
 	return 0;
 }
@@ -2503,11 +2466,13 @@ static INPUT_PORTS_START( cps3 )
 	PORT_BIT( 0xffc00000, IP_ACTIVE_LOW, IPT_UNUSED ) // nothing here?
 
 	PORT_START("CACHE_BLOCKS")
-	PORT_CONFNAME(0x03, 0x02, "Tile Cache Blocks")
+	PORT_CONFNAME(0x07, 0x04, "Tile Cache Blocks")
 	PORT_CONFSETTING(0x00, "8")
 	PORT_CONFSETTING(0x01, "16")
 	PORT_CONFSETTING(0x02, "32")
 	PORT_CONFSETTING(0x03, "64")
+	PORT_CONFSETTING(0x04, "128")
+	PORT_CONFSETTING(0x05, "256")
 
 	PORT_START("CACHE_TILES")
 	PORT_CONFNAME(0x03, 0x00, "Tiles Per Cache Block")
@@ -2516,19 +2481,10 @@ static INPUT_PORTS_START( cps3 )
 	PORT_CONFSETTING(0x02, "16")
 	PORT_CONFSETTING(0x03, "32")
 
-	PORT_START("SPRITE_CACHE_BLOCKS")
-	PORT_CONFNAME(0x03, 0x02, "Sprite Cache Blocks")
-	PORT_CONFSETTING(0x00, "8")
-	PORT_CONFSETTING(0x01, "16")
-	PORT_CONFSETTING(0x02, "32")
-	PORT_CONFSETTING(0x03, "64")
-
-	PORT_START("SPRITE_CACHE_TILES")
-	PORT_CONFNAME(0x03, 0x00, "Sprites Per Cache Block")
-	PORT_CONFSETTING(0x00, "4")
-	PORT_CONFSETTING(0x01, "8")
-	PORT_CONFSETTING(0x02, "16")
-	PORT_CONFSETTING(0x03, "32")
+	PORT_START("CACHE_POLICY")
+	PORT_CONFNAME(0x01, 0x00, "Tile Cache Policy")
+	PORT_CONFSETTING(0x00, "Random")
+	PORT_CONFSETTING(0x01, "LRU")
 INPUT_PORTS_END
 
 /* Red Earth game inputs */
@@ -2614,8 +2570,6 @@ void cps3_state::machine_reset()
 	m_dma_status = 0;
 	m_spritelist_dma = 0;
 	m_tilemap_cache_stats->reset();
-	m_sprite_cache_stats->reset();
-	m_frame_code_stats->begin_frame();
 	m_report_averager->reset();
 
 	// copy data from flashroms back into user regions + decrypt into regions we execute/draw from.
