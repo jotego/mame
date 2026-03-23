@@ -80,7 +80,9 @@ random strategy or a LRU strategy can be set in the menu too.
 The cached tiles are preserved between frames. Cache data is only replaced by
 new data when needed but never cleared.
 
-## Tilemap Stats
+The
+
+## Tile Stats
 
 While drawing tilemaps, use the cache emulator to keep track of the required
 SDRAM access.
