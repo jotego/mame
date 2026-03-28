@@ -1195,7 +1195,7 @@ void cps3_state::video_start()
 	m_char_ram = make_unique_clear<u32[]>(0x800000/4);
 	m_mame_colours = make_unique_clear<u32[]>(0x20000);
 	m_ss_ram = make_unique_clear<u8[]>(0x8000);
-	m_spritelist = make_unique_clear<u32[]>(0x80000/4);
+	m_spritelist = make_unique_clear<u32[]>(0x2000/4);
 	m_tilemap_cache_stats = std::make_unique<cps3_tile_cache_stats>();
 	m_report_averager = std::make_unique<cps3_report_averager>();
 	m_tilemap_cache_stats->reset();
@@ -1223,7 +1223,7 @@ void cps3_state::video_start()
 	save_pointer(NAME(m_char_ram), 0x800000/4);
 	save_pointer(NAME(m_mame_colours), 0x20000);
 	save_pointer(NAME(m_ss_ram), 0x8000);
-	save_pointer(NAME(m_spritelist), 0x80000/4);
+	save_pointer(NAME(m_spritelist), 0x2000/4);
 }
 
 void cps3_state::draw_tilemapsprite_line(u32 *regs, int drawline, bitmap_rgb32 &bitmap, const rectangle &cliprect)
@@ -1315,6 +1315,7 @@ u32 cps3_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const
 {
 	static constexpr u64 FPGA_CLOCK = 85909000;
 	static constexpr u64 FRAME_RATE_X100 = 5959;
+	static constexpr int SPRITELIST_WORDS = 0x2000 / 4;
 
 	if (machine().input().code_pressed_once(KEYCODE_F11) && (machine().input().code_pressed(KEYCODE_LCONTROL) || machine().input().code_pressed(KEYCODE_RCONTROL)))
 		dump_ss_debug_state();
@@ -1362,153 +1363,115 @@ u32 cps3_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const
 
 	/* Sprites */
 	//logerror("Spritelist start:\n");
-	for (int i = 0x00000 / 4; i < 0x2000 / 4; i += 4)
+	for (int i = 0; i < SPRITELIST_WORDS; i += 4)
 	{
-		if (m_spritelist[i + 0] & 0x80000000)
+		u32 const value1 = m_spritelist[i + 0];
+		u32 const value2 = m_spritelist[i + 1];
+		u32 const value3 = m_spritelist[i + 2];
+
+		if (value1 & 0x80000000)
 			break;
 
-		u8 const gscroll = (m_spritelist[i + 0] & 0x70000000) >> 28;
-		u32 const length = (m_spritelist[i + 0] & 0x01ff0000) >> 16; // how many entries in the sprite table
-		u32 start =        (m_spritelist[i + 0] & 0x00007ff0) >> 4;
+		static const int tilestable[4] = { 8,1,2,4 };
 
-		int const xpos =   (m_spritelist[i + 1] & 0x03ff0000) >> 16;
-		int const ypos =    m_spritelist[i + 1] & 0x000003ff;
+		u32 const tileno = (value1 & 0xfffe0000) >> 17;
+		u8 flipx =         (value1 & 0x00001000) >> 12;
+		u8 flipy =         (value1 & 0x00000800) >> 11;
+		bool const alpha = (value1 & 0x00000400) >> 10;
+		bool const bpp =   (value1 & 0x00000200) >> 9;
+		u32 const pal =    (value1 & 0x000001ff);
 
-		bool const whichbpp =     (m_spritelist[i + 2] & 0x40000000) >> 30; // not 100% sure if this is right, jojo title / characters
-		bool const whichpal =     (m_spritelist[i + 2] & 0x20000000) >> 29;
-		u8 const global_xflip =   (m_spritelist[i + 2] & 0x10000000) >> 28;
-		u8 const global_yflip =   (m_spritelist[i + 2] & 0x08000000) >> 27;
-		bool const global_alpha = (m_spritelist[i + 2] & 0x04000000) >> 26; // all games except warzard
-		bool const global_bpp =   (m_spritelist[i + 2] & 0x02000000) >> 25;
-		u32 const global_pal =    (m_spritelist[i + 2] & 0x01ff0000) >> 16;
-		//int const tilemapnum =  (m_spritelist[i + 2] & 0x00000030) >> 4; // jojo and jojoba only
+		int xpos = (value2 & 0x03ff0000) >> 16;
+		int ypos = (value2 & 0x000003ff);
 
-		int const gscrollx = (m_ppu_gscroll_buff[gscroll] & 0x03ff0000) >> 16;
-		int const gscrolly = (m_ppu_gscroll_buff[gscroll] & 0x000003ff) >> 0;
-		start = (start * 0x100) >> 2;
+		u32 const ysizedraw2 = ((value3 & 0x7f000000) >> 24) + 1;
+		u32 const xsizedraw2 = ((value3 & 0x007f0000) >> 16) + 1;
+		s8 ysize2 =         ((value3 & 0x0000000c) >> 2);
+		s8 xsize2 =         ((value3 & 0x00000003) >> 0);
 
-		for (int j = 0; j < (length) * 4; j += 4)
+		if (ysize2 == 0)
 		{
-			u32 const value1 = (m_spritelist[start + j + 0]);
-			u32 const value2 = (m_spritelist[start + j + 1]);
-			u32 const value3 = (m_spritelist[start + j + 2]);
+			continue;
+		}
 
-			static const int tilestable[4] = { 8,1,2,4 };
+		if (xsize2 == 0) // xsize of 0 tiles seems to be a special command to draw tilemaps
+		{
+			int tilemapnum = ((value3 & 0x00000030) >> 4);
+			u32* regs = &m_tilemap_regs[tilemapnum * 4];
 
-			u32 const tileno = (value1 & 0xfffe0000) >> 17;
-			//u8 unk2000 =     (value1 & 0x00002000) >> 13); //? sfiii2/3 bonus stages - score numbers and balls icons, sfiii3 staff roll texts
-			u8 flipx =         (value1 & 0x00001000) >> 12;
-			u8 flipy =         (value1 & 0x00000800) >> 11;
-			bool const alpha = (value1 & 0x00000400) >> 10; // warzard alpha effects
-			bool const bpp =   (value1 & 0x00000200) >> 9;
-			u32 const pal =    (value1 & 0x000001ff);
-
-			int xpos2 = (value2 & 0x03ff0000) >> 16;
-			int ypos2 = (value2 & 0x000003ff) >> 0;
-
-			/* these are the sizes to actually draw */
-			u32 const ysizedraw2 = ((value3 & 0x7f000000) >> 24) + 1;
-			u32 const xsizedraw2 = ((value3 & 0x007f0000) >> 16) + 1;
-			//u8 unk =             ((value3 & 0x00000300) >> 8); // 3 - sprites, 0 - tilemaps, enable X/Y zooms ?
-			s8 ysize2 =            ((value3 & 0x0000000c) >> 2);
-			s8 xsize2 =            ((value3 & 0x00000003) >> 0);
-
-			if (ysize2 == 0)
+			for (int yy = 0; yy < ysizedraw2; yy++)
 			{
-				//logerror("invalid sprite ysize of 0 tiles\n");
-				continue;
+				// positioning similar to sprites Y coord, but relative to edge, not center
+				int cury_pos = ypos - yy;
+				cury_pos = ~cury_pos;
+				cury_pos -= 18;
+				cury_pos &= 0x3ff;
+
+				if (cury_pos >= m_renderbuffer_clip.top() && cury_pos <= m_renderbuffer_clip.bottom())
+					draw_tilemapsprite_line(regs, cury_pos, m_renderbuffer_bitmap, m_renderbuffer_clip);
 			}
+		}
+		else
+		{
+			ysize2 = tilestable[ysize2];
+			xsize2 = tilestable[xsize2];
 
-			if (xsize2 == 0) // xsize of 0 tiles seems to be a special command to draw tilemaps
+			u32 const xinc = (xsizedraw2 << 16) / xsize2;
+			u32 const yinc = (ysizedraw2 << 16) / ysize2;
+
+			u32 xscale = xinc / 16;
+			u32 yscale = yinc / 16;
+
+			/* Let's approximate to the nearest greater integer value
+			   to avoid holes in between tiles */
+			if (xscale & 0xffff)    xscale += (1<<16) / 16;
+			if (yscale & 0xffff)    yscale += (1<<16) / 16;
+
+			xsize2 -= 1;
+			ysize2 -= 1;
+
+			if (!flipx) xpos += (xsizedraw2 / 2);
+			else xpos -= (xsizedraw2 / 2);
+
+			ypos += (ysizedraw2 / 2);
+
+			if (!flipx) xpos -= ((xsize2 + 1) * xinc) >> 16;
+			else  xpos += (xsize2 * xinc) >> 16;
+
+			if (flipy) ypos -= (ysize2 * yinc) >> 16;
+
+			m_gfxdecode->gfx(1)->set_granularity(bpp ? 64 : 256);
+
+			int trans = alpha ? CPS3_TRANSPARENCY_PEN_INDEX_BLEND : CPS3_TRANSPARENCY_PEN_INDEX;
+
+			int count = 0;
+			for (int xx = 0; xx < xsize2 + 1; xx++)
 			{
-				int tilemapnum = ((value3 & 0x00000030) >> 4);
-				u32* regs = &m_tilemap_regs[tilemapnum * 4];
+				int current_xpos;
 
-				for (int yy = 0; yy < ysizedraw2; yy++)
+				if (!flipx) current_xpos = xpos + ((xx * xinc) >> 16);
+				else current_xpos = xpos - ((xx * xinc) >> 16);
+
+				current_xpos &= 0x3ff;
+				if (current_xpos & 0x200) current_xpos -= 0x400;
+
+				for (int yy = 0; yy < ysize2 + 1; yy++)
 				{
-					// positioning similar to sprites Y coord, but relative to edge, not center
-					int cury_pos = ypos2 + gscrolly - yy;
-					cury_pos = ~cury_pos;
-					cury_pos -= 18;
-					cury_pos &= 0x3ff;
+					int current_ypos;
 
-					if (cury_pos >= m_renderbuffer_clip.top() && cury_pos <= m_renderbuffer_clip.bottom())
-						draw_tilemapsprite_line(regs, cury_pos, m_renderbuffer_bitmap, m_renderbuffer_clip);
-				}
-			}
-			else
-			{
-				ysize2 = tilestable[ysize2];
-				xsize2 = tilestable[xsize2];
+					if (flipy) current_ypos = ypos + ((yy * yinc) >> 16);
+					else current_ypos = ypos - ((yy * yinc) >> 16);
 
-				u32 const xinc = (xsizedraw2 << 16) / xsize2;
-				u32 const yinc = (ysizedraw2 << 16) / ysize2;
+					current_ypos = 0x3ff - current_ypos;
+					current_ypos -= 17;
+					current_ypos &= 0x3ff;
 
-				u32 xscale = xinc / 16;
-				u32 yscale = yinc / 16;
+					if (current_ypos & 0x200) current_ypos -= 0x400;
 
-				/* Let's approximate to the nearest greater integer value
-				   to avoid holes in between tiles */
-				if (xscale & 0xffff)    xscale += (1<<16) / 16;
-				if (yscale & 0xffff)    yscale += (1<<16) / 16;
+					m_tilemap_cache_stats->request_tile(tileno + count, machine().rand());
 
-				xsize2 -= 1;
-				ysize2 -= 1;
-
-				flipx ^= global_xflip;
-				flipy ^= global_yflip;
-
-				if (!flipx) xpos2 += (xsizedraw2 / 2);
-				else xpos2 -= (xsizedraw2 / 2);
-
-				ypos2 += (ysizedraw2 / 2);
-
-				if (!flipx) xpos2 -= ((xsize2 + 1) * xinc) >> 16;
-				else  xpos2 += (xsize2 * xinc) >> 16;
-
-				if (flipy) ypos2 -= (ysize2 * yinc) >> 16;
-
-				/* use the palette value from the main list or the sublists? */
-				int actualpal = whichpal ? global_pal : pal;
-
-				/* use the bpp value from the main list or the sublists? */
-				m_gfxdecode->gfx(1)->set_granularity((whichbpp ? global_bpp : bpp) ? 64 : 256);
-
-				int trans = (global_alpha || alpha) ? CPS3_TRANSPARENCY_PEN_INDEX_BLEND : CPS3_TRANSPARENCY_PEN_INDEX;
-
-				int count = 0;
-				for (int xx = 0; xx < xsize2 + 1; xx++)
-				{
-					int current_xpos;
-
-					if (!flipx) current_xpos = (xpos + xpos2 + ((xx * xinc) >> 16));
-					else current_xpos = (xpos + xpos2 - ((xx * xinc) >> 16));
-					//current_xpos +=  machine().rand() & 0x3ff;
-					current_xpos += gscrollx;
-					current_xpos += 1;
-					current_xpos &= 0x3ff;
-					if (current_xpos & 0x200) current_xpos -= 0x400;
-
-					for (int yy = 0; yy < ysize2 + 1; yy++)
-					{
-						int current_ypos;
-
-						if (flipy) current_ypos = (ypos + ypos2 + ((yy * yinc) >> 16));
-						else current_ypos = (ypos + ypos2 - ((yy * yinc) >> 16));
-
-						current_ypos += gscrolly;
-						current_ypos = 0x3ff - current_ypos;
-						current_ypos -= 17;
-						current_ypos &= 0x3ff;
-
-						if (current_ypos & 0x200) current_ypos -= 0x400;
-
-						//if ( (whichbpp) && (m_screen->frame_number() & 1)) continue;
-						m_tilemap_cache_stats->request_tile(tileno + count, machine().rand());
-
-						cps3_drawgfxzoom(m_renderbuffer_bitmap, m_renderbuffer_clip, m_gfxdecode->gfx(1), tileno + count, actualpal, 0 ^ flipx, 0 ^ flipy, current_xpos, current_ypos, trans, 0, xscale, yscale);
-						count++;
-					}
+					cps3_drawgfxzoom(m_renderbuffer_bitmap, m_renderbuffer_clip, m_gfxdecode->gfx(1), tileno + count, pal, 0 ^ flipx, 0 ^ flipy, current_xpos, current_ypos, trans, 0, xscale, yscale);
+					count++;
 				}
 			}
 		}
@@ -1561,13 +1524,14 @@ u32 cps3_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const
 	m_report_averager->add_frame(frame_report);
 	cps3_report_averager::report const &report = m_report_averager->last_report();
 	machine().popmessage(
-			"Cache: %u x %u (%u kB) | Policy: %s\nUnique codes: %u | SDRAM req: %u\nSDRAM usage: %02u%%",
+			"Cache: %u x %u (%u kB) | Policy: %s\nUnique codes: %u | SDRAM req: %u | List sprites: %u\nSDRAM usage: %02u%%",
 			m_tilemap_cache_stats->block_count(),
 			m_tilemap_cache_stats->tiles_per_block(),
 			report.cache_kb,
 			(cache_policy == cps3_tile_cache_stats::replacement_policy::LRU) ? "LRU" : "Random",
 			report.unique_codes,
 			report.sdram_requests,
+			m_spritelist_dma_sprite_count,
 			report.usage_pct);
 
 	return 0;
@@ -1648,21 +1612,92 @@ void cps3_state::cram_data_w(offs_t offset, u32 data, u32 mem_mask)
 void cps3_state::spritedma_w(offs_t offset, u16 data, u16 mem_mask)
 {
 	u16 prev = m_spritelist_dma;
+	static constexpr int SPRITELIST_WORDS = 0x2000 / 4;
+	static constexpr int SPRITELIST_STOPPER = 0x80000000;
 	COMBINE_DATA(&m_spritelist_dma);
 
-	// display list DMA. actual DMA probably combine coordinates and control fields from main/sub list records and gscroll registers, we just save them for further processing.
+	// display list DMA. Flatten the hardware main-list + sublist structure into
+	// a compact render list consumed directly by screen_update.
 	if (!(m_dma_status & 1) && (m_spritelist_dma & 9) == 8 && (prev & 9) == 9) // 0->1
 	{
+		int dst = 0;
+
+		m_spritelist_dma_sprite_count = 0;
+		m_spritelist[0] = SPRITELIST_STOPPER;
 		for (int i = 0; i < 0x2000/4; i += 4)
 		{
-			std::copy(&m_spriteram[i], &m_spriteram[i + 4], &m_spritelist[i]); // copy main list record
-			u32 dat = m_spriteram[i];
-			if (dat & 0x80000000)
+			u32 const dat = m_spriteram[i];
+			if (dat & SPRITELIST_STOPPER)
 				break;
-			u32 offs =   (dat & 0x00007fff) << 2;
-			u32 length = (dat & 0x01ff0000) >> 16;
-			std::copy(&m_spriteram[offs], &m_spriteram[offs + length*4], &m_spritelist[offs]); // copy sublist
+
+			u32 const offs =   (dat & 0x00007ff0) << 2;
+			u32 const length = (dat & 0x01ff0000) >> 16;
+			int const xpos =   (m_spriteram[i + 1] & 0x03ff0000) >> 16;
+			int const ypos =    m_spriteram[i + 1] & 0x000003ff;
+			bool const whichbpp =     (m_spriteram[i + 2] & 0x40000000) >> 30;
+			bool const whichpal =     (m_spriteram[i + 2] & 0x20000000) >> 29;
+			u8 const global_xflip =   (m_spriteram[i + 2] & 0x10000000) >> 28;
+			u8 const global_yflip =   (m_spriteram[i + 2] & 0x08000000) >> 27;
+			bool const global_alpha = (m_spriteram[i + 2] & 0x04000000) >> 26;
+			bool const global_bpp =   (m_spriteram[i + 2] & 0x02000000) >> 25;
+			u32 const global_pal =    (m_spriteram[i + 2] & 0x01ff0000) >> 16;
+			u8 const gscroll =        (dat & 0x70000000) >> 28;
+			int const gscrollx =      (m_ppu_gscroll[gscroll] & 0x03ff0000) >> 16;
+			int const gscrolly =       m_ppu_gscroll[gscroll] & 0x000003ff;
+
+			for (u32 j = 0; j < length * 4; j += 4)
+			{
+				if (dst >= SPRITELIST_WORDS - 4)
+					break;
+
+				u32 const value1 = m_spriteram[offs + j + 0];
+				u32 const value2 = m_spriteram[offs + j + 1];
+				u32 const value3 = m_spriteram[offs + j + 2];
+				u32 const value4 = m_spriteram[offs + j + 3];
+
+				u32 emitted_value1 = value1;
+				u32 emitted_value2 = value2;
+
+				u32 const subpal = value1 & 0x000001ff;
+				bool const subbpp = (value1 & 0x00000200) >> 9;
+				bool const subalpha = (value1 & 0x00000400) >> 10;
+				u8 const subflipx = (value1 & 0x00001000) >> 12;
+				u8 const subflipy = (value1 & 0x00000800) >> 11;
+				int const subx = (value2 & 0x03ff0000) >> 16;
+				int const suby = value2 & 0x000003ff;
+				int const mergedx = xpos + subx + gscrollx + 1;
+				int const mergedy = ypos + suby + gscrolly;
+
+				emitted_value1 &= ~0x00001fff;
+				emitted_value1 |= (whichpal ? global_pal : subpal);
+				emitted_value1 |= (whichbpp ? global_bpp : subbpp) ? 0x00000200 : 0;
+				emitted_value1 |= (global_alpha || subalpha) ? 0x00000400 : 0;
+				emitted_value1 |= (subflipx ^ global_xflip) ? 0x00001000 : 0;
+				emitted_value1 |= (subflipy ^ global_yflip) ? 0x00000800 : 0;
+
+				emitted_value2 &= ~0x03ff03ff;
+				emitted_value2 |= ((mergedx & 0x03ff) << 16);
+				emitted_value2 |= (mergedy & 0x03ff);
+
+				m_spritelist[dst + 0] = emitted_value1;
+				m_spritelist[dst + 1] = emitted_value2;
+				m_spritelist[dst + 2] = value3;
+				m_spritelist[dst + 3] = value4;
+				dst += 4;
+				m_spritelist_dma_sprite_count++;
+			}
+
+			if (dst >= SPRITELIST_WORDS - 4)
+				break;
 		}
+
+		m_spritelist[dst] = SPRITELIST_STOPPER;
+		if (dst + 1 < SPRITELIST_WORDS)
+			m_spritelist[dst + 1] = 0;
+		if (dst + 2 < SPRITELIST_WORDS)
+			m_spritelist[dst + 2] = 0;
+		if (dst + 3 < SPRITELIST_WORDS)
+			m_spritelist[dst + 3] = 0;
 		std::copy(&m_ppu_gscroll[0], &m_ppu_gscroll[8], &m_ppu_gscroll_buff[0]);
 
 		m_dma_status |= 1;
@@ -2603,6 +2638,7 @@ void cps3_state::machine_start()
 	save_item(NAME(m_ss_pal_base));
 	save_item(NAME(m_ss_regs));
 	save_item(NAME(m_spritelist_dma));
+	save_item(NAME(m_spritelist_dma_sprite_count));
 
 	save_pointer(NAME(m_eeprom), 0x80/4);
 }
@@ -2613,6 +2649,8 @@ void cps3_state::machine_reset()
 	m_current_table_address = -1;
 	m_dma_status = 0;
 	m_spritelist_dma = 0;
+	m_spritelist_dma_sprite_count = 0;
+	m_spritelist[0] = 0x80000000;
 	m_tilemap_cache_stats->reset();
 	m_report_averager->reset();
 

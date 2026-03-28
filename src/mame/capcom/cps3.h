@@ -138,6 +138,7 @@ private:
 	int m_altEncryption = 0;
 	u16 m_dma_status = 0;
 	u16 m_spritelist_dma = 0;
+	u32 m_spritelist_dma_sprite_count = 0;
 	u32 m_cram_bank = 0;
 	u16 m_current_eeprom_read = 0;
 	u32 m_paldma_source = 0;
