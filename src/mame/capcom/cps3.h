@@ -17,6 +17,8 @@
 #include "machine/timer.h"
 #include "emupal.h"
 
+#include <array>
+
 class cps3_tile_cache_stats;
 class cps3_report_averager;
 
@@ -122,6 +124,7 @@ private:
 	s16 m_ss_hscroll = 0;
 	s16 m_ss_vscroll = 0;
 	u8  m_ss_pal_base = 0;
+	std::array<u8, 0x16> m_ss_regs{};
 	u32 m_screenwidth = 0;
 	std::unique_ptr<u32[]> m_mame_colours;
 	bitmap_rgb32 m_renderbuffer_bitmap;
@@ -177,6 +180,8 @@ private:
 	void outport_w(offs_t offset, u16 data, u16 mem_mask = ~0);
 	void spritedma_w(offs_t offset, u16 data, u16 mem_mask = ~0);
 	SH2_DMA_KLUDGE_CB(dma_callback);
+	bool dump_ss_file(char const *filename, void const *data, u32 length);
+	void dump_ss_debug_state();
 	void draw_fg_layer(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 	u32 screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 	void vbl_interrupt(int state);

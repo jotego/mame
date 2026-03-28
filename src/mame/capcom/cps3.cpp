@@ -585,6 +585,8 @@ Hardware registers info
 #include "cdrom.h"
 #include "machine/nvram.h"
 #include "cps3.h"
+#include "emuopts.h"
+#include "fileio.h"
 #include "bus/nscsi/cd.h"
 #include "machine/wd33c9x.h"
 #include "screen.h"
@@ -1313,6 +1315,10 @@ u32 cps3_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const
 {
 	static constexpr u64 FPGA_CLOCK = 85909000;
 	static constexpr u64 FRAME_RATE_X100 = 5959;
+
+	if (machine().input().code_pressed_once(KEYCODE_F11) && (machine().input().code_pressed(KEYCODE_LCONTROL) || machine().input().code_pressed(KEYCODE_RCONTROL)))
+		dump_ss_debug_state();
+
 	u32 const cache_blocks = (m_cache_blocks->read() == 0x05) ? 256 : ((m_cache_blocks->read() == 0x04) ? 128 : ((m_cache_blocks->read() == 0x03) ? 64 : ((m_cache_blocks->read() == 0x02) ? 32 : ((m_cache_blocks->read() == 0x01) ? 16 : 8))));
 	u32 const cache_tiles = (m_cache_tiles->read() == 0x03) ? 32 : ((m_cache_tiles->read() == 0x02) ? 16 : ((m_cache_tiles->read() == 0x01) ? 8 : 4));
 	cps3_tile_cache_stats::replacement_policy const cache_policy = (m_cache_policy->read() & 0x01) ? cps3_tile_cache_stats::replacement_policy::LRU : cps3_tile_cache_stats::replacement_policy::RANDOM;
@@ -2018,6 +2024,9 @@ void cps3_state::outport_w(offs_t offset, u16 data, u16 mem_mask)
 
 void cps3_state::ssregs_w(offs_t offset, u8 data)
 {
+	if (m_ss_regs.size() > offset)
+		m_ss_regs[offset] = data;
+
 	switch (offset)
 	{
 	case 0x07:
@@ -2041,6 +2050,40 @@ void cps3_state::ssregs_w(offs_t offset, u8 data)
 		logerror("SS regs write %02X data %02X\n", offset, data);
 		break;
 	}
+}
+
+bool cps3_state::dump_ss_file(char const *filename, void const *data, u32 length)
+{
+	emu_file file(machine().options().plugin_data_path(), OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS);
+	std::error_condition const filerr = file.open(util::string_format("debug" PATH_SEPARATOR "%s" PATH_SEPARATOR "%s", machine().basename(), filename));
+	if (filerr)
+	{
+		logerror("Unable to create SS dump file %s: %s\n", filename, filerr.message());
+		return false;
+	}
+
+	if (file.write(data, length) != length)
+	{
+		logerror("Short write while creating SS dump file %s\n", filename);
+		return false;
+	}
+
+	return true;
+}
+
+void cps3_state::dump_ss_debug_state()
+{
+	bool const ok =
+			dump_ss_file("ssmap.bin", &m_ss_ram[0x0000], 0x2000) &&
+			dump_ss_file("ssscr.bin", &m_ss_ram[0x2000], 0x2000) &&
+			dump_ss_file("sschar.bin", &m_ss_ram[0x4000], 0x4000) &&
+			dump_ss_file("ssreg.bin", m_ss_regs.data(), m_ss_regs.size()) &&
+			dump_ss_file("pal.bin", &m_colourram[0], 0x40000);
+
+	if (ok)
+		machine().popmessage("SS dump saved to %s/debug/%s", machine().options().plugin_data_path(), machine().basename());
+	else
+		machine().popmessage("SS dump failed, see error.log");
 }
 
 //<ElSemi> +0 X  +2 Y +4 unknown +6 enable ( & 0x8000) +8 low part tilemap base, high part linescroll base
@@ -2558,6 +2601,7 @@ void cps3_state::machine_start()
 	save_item(NAME(m_ss_hscroll));
 	save_item(NAME(m_ss_vscroll));
 	save_item(NAME(m_ss_pal_base));
+	save_item(NAME(m_ss_regs));
 	save_item(NAME(m_spritelist_dma));
 
 	save_pointer(NAME(m_eeprom), 0x80/4);
