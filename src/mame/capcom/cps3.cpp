@@ -2113,12 +2113,14 @@ void cps3_state::dump_ss_debug_state()
 			dump_ss_file("ssscr.bin", &m_ss_ram[0x2000], 0x2000) &&
 			dump_ss_file("sschar.bin", &m_ss_ram[0x4000], 0x4000) &&
 			dump_ss_file("ssreg.bin", m_ss_regs.data(), m_ss_regs.size()) &&
+			dump_ss_file("tilechar.bin", m_char_ram.get(), 0x800000) &&
+			dump_ss_file("scene.bin", m_spritelist.get(), 0x2000) &&
 			dump_ss_file("pal.bin", &m_colourram[0], 0x40000);
 
 	if (ok)
-		machine().popmessage("SS dump saved to %s/debug/%s", machine().options().plugin_data_path(), machine().basename());
+		machine().popmessage("Video dump saved to %s/debug/%s", machine().options().plugin_data_path(), machine().basename());
 	else
-		machine().popmessage("SS dump failed, see error.log");
+		machine().popmessage("Video dump failed, see error.log");
 }
 
 //<ElSemi> +0 X  +2 Y +4 unknown +6 enable ( & 0x8000) +8 low part tilemap base, high part linescroll base
