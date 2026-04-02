@@ -1318,7 +1318,7 @@ u32 cps3_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const
 	static constexpr int SPRITELIST_WORDS = 0x2000 / 4;
 
 	if (machine().input().code_pressed_once(KEYCODE_F11) && (machine().input().code_pressed(KEYCODE_LCONTROL) || machine().input().code_pressed(KEYCODE_RCONTROL)))
-		dump_ss_debug_state();
+		m_ss_dump_pending = true;
 
 	u32 const cache_blocks = (m_cache_blocks->read() == 0x05) ? 256 : ((m_cache_blocks->read() == 0x04) ? 128 : ((m_cache_blocks->read() == 0x03) ? 64 : ((m_cache_blocks->read() == 0x02) ? 32 : ((m_cache_blocks->read() == 0x01) ? 16 : 8))));
 	u32 const cache_tiles = (m_cache_tiles->read() == 0x03) ? 32 : ((m_cache_tiles->read() == 0x02) ? 16 : ((m_cache_tiles->read() == 0x01) ? 8 : 4));
@@ -1699,6 +1699,12 @@ void cps3_state::spritedma_w(offs_t offset, u16 data, u16 mem_mask)
 		if (dst + 3 < SPRITELIST_WORDS)
 			m_spritelist[dst + 3] = 0;
 		std::copy(&m_ppu_gscroll[0], &m_ppu_gscroll[8], &m_ppu_gscroll_buff[0]);
+
+		if (m_ss_dump_pending)
+		{
+			dump_ss_debug_state();
+			m_ss_dump_pending = false;
+		}
 
 		m_dma_status |= 1;
 		m_spritelist_dma_timer->adjust(attotime::from_usec(4)); // slight delay to skip multiple 8/9 writes. actual DMA speed is unknown.
@@ -2113,6 +2119,7 @@ void cps3_state::dump_ss_debug_state()
 			dump_ss_file("ssscr.bin", &m_ss_ram[0x2000], 0x2000) &&
 			dump_ss_file("sschar.bin", &m_ss_ram[0x4000], 0x4000) &&
 			dump_ss_file("ssreg.bin", m_ss_regs.data(), m_ss_regs.size()) &&
+			dump_ss_file("spriteram.bin", &m_spriteram[0], 0x80000) &&
 			dump_ss_file("tilechar.bin", m_char_ram.get(), 0x800000) &&
 			dump_ss_file("scene.bin", m_spritelist.get(), 0x2000) &&
 			dump_ss_file("pal.bin", &m_colourram[0], 0x40000);
