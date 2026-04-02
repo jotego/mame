@@ -183,7 +183,6 @@ private:
 	SH2_DMA_KLUDGE_CB(dma_callback);
 	bool dump_ss_file(char const *filename, void const *data, u32 length);
 	void dump_ss_debug_state();
-	void dump_ss_sprdma_debug_state();
 	void draw_fg_layer(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 	u32 screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 	void vbl_interrupt(int state);

@@ -1318,7 +1318,7 @@ u32 cps3_state::screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const
 	static constexpr int SPRITELIST_WORDS = 0x2000 / 4;
 
 	if (machine().input().code_pressed_once(KEYCODE_F11) && (machine().input().code_pressed(KEYCODE_LCONTROL) || machine().input().code_pressed(KEYCODE_RCONTROL)))
-		dump_ss_sprdma_debug_state();
+		dump_ss_debug_state();
 
 	u32 const cache_blocks = (m_cache_blocks->read() == 0x05) ? 256 : ((m_cache_blocks->read() == 0x04) ? 128 : ((m_cache_blocks->read() == 0x03) ? 64 : ((m_cache_blocks->read() == 0x02) ? 32 : ((m_cache_blocks->read() == 0x01) ? 16 : 8))));
 	u32 const cache_tiles = (m_cache_tiles->read() == 0x03) ? 32 : ((m_cache_tiles->read() == 0x02) ? 16 : ((m_cache_tiles->read() == 0x01) ? 8 : 4));
@@ -2121,20 +2121,6 @@ void cps3_state::dump_ss_debug_state()
 		machine().popmessage("Video dump saved to %s/debug/%s", machine().options().plugin_data_path(), machine().basename());
 	else
 		machine().popmessage("Video dump failed, see error.log");
-}
-
-void cps3_state::dump_ss_sprdma_debug_state()
-{
-	bool ok = true;
-
-	ok = dump_ss_file("sprdma_pre.bin", m_spritelist.get(), 0x2000) && ok;
-	dump_ss_debug_state();
-	ok = dump_ss_file("sprdma_post.bin", m_spritelist.get(), 0x2000) && ok;
-
-	if (ok)
-		machine().popmessage("Sprite DMA pre/post dump saved to %s/debug/%s", machine().options().plugin_data_path(), machine().basename());
-	else
-		machine().popmessage("Sprite DMA pre/post dump failed, see error.log");
 }
 
 //<ElSemi> +0 X  +2 Y +4 unknown +6 enable ( & 0x8000) +8 low part tilemap base, high part linescroll base
